@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<avdecc_layout>
+	<entity>
+		<!--if you don't provide a name here, the hostname will be used-->
+		<name>E3Engine64</name>
+		<vendor>Avid</vendor>
+		<device>E3 Engine</device>
+		<!--this offset is added to the GUID created from the local MAC address-->
+		<guid>0</guid>
+		<!--set to 1 if you want the Mac AVB driver to connect-->
+		<allow_any_avdeccc>0</allow_any_avdeccc>
+		<!--sync options, enable what the hardware shall support-->
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<sync_external>
+			<name>BNC</name>
+		</sync_external>
+		<sync_avb>
+			<name>AVB</name>
+		</sync_avb>
+		<defaults>
+			<!--the following are global hardware defaults-->
+			<!--don't set them differently on a second entity-->
+			<!--if you specify defaults, they will be set at avbd startup-->
+			<rate>48000</rate>
+			<!--this is the index of the active sync source-->
+			<sync>0</sync>
+			<!--this is the index of the active configuration-->
+			<configuration>0</configuration>
+		</defaults>
+		<configuration>
+			<name>Configuration Fs48k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:00</persistent_id-->
+				<!--if you enable the persistent_id, streams with the same ID will automatically connect-->
+				<!--Supported ID range is 91:E0:F0:00:FE:00 to 91:E0:F0:00:FE:FF-->
+				<name>To Stage16-1</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>0</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:01</persistent_id-->
+				<name>To Stage16-2</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>12</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:02</persistent_id-->
+				<name>To Stage16-3</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>24</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:03</persistent_id-->
+				<name>To Stage16-4</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>36</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:04</persistent_id-->
+				<name>To S3Mix</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>6</channels>
+				<dmastart>48</dmastart>
+			</outstream>
+			<outstream>
+				<name>Media Clock Out</name>
+				<redundant>2</redundant>
+				<channels>1</channels>
+				<dmastart>54</dmastart>
+			</outstream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:80</persistent_id-->
+				<name>From Stage16-1</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>0</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:81</persistent_id-->
+				<name>From Stage16-2</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>16</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:82</persistent_id-->
+				<name>From Stage16-3</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>32</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:83</persistent_id-->
+				<name>From Stage16-4</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>48</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:84</persistent_id-->
+				<name>From S3Mix</name>
+				<redundant>1</redundant>
+				<channels>4</channels>
+				<dmastart>64</dmastart>
+			</instream>
+			<instream>
+				<name>Media Clock In</name>
+				<redundant>1</redundant>
+				<channels>1</channels>
+				<dmastart>68</dmastart>
+			</instream>
+		</configuration>
+		<configuration>
+			<name>Configuration Fs96k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<!--enable_48k>1</enable_48k-->
+				<!--enable_882k>1</enable_882k-->
+				<enable_96k>1</enable_96k>
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:05</persistent_id-->
+				<name>To Stage16-1</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>0</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:06</persistent_id-->
+				<name>To Stage16-2</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>12</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:07</persistent_id-->
+				<name>To Stage16-3</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>24</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:08</persistent_id-->
+				<name>To Stage16-4</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>12</channels>
+				<dmastart>36</dmastart>
+			</outstream>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:09</persistent_id-->
+				<name>To S3Mix</name>
+				<pto>520833</pto>
+				<redundant>2</redundant>
+				<channels>6</channels>
+				<dmastart>48</dmastart>
+			</outstream>
+			<outstream>
+				<name>Media Clock Out</name>
+				<redundant>2</redundant>
+				<channels>1</channels>
+				<dmastart>54</dmastart>
+			</outstream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:85</persistent_id-->
+				<name>From Stage16-1</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>0</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:86</persistent_id-->
+				<name>From Stage16-2</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>16</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:87</persistent_id-->
+				<name>From Stage16-3</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>32</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:88</persistent_id-->
+				<name>From Stage16-4</name>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>48</dmastart>
+			</instream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:89</persistent_id-->
+				<name>From S3Mix</name>
+				<redundant>1</redundant>
+				<channels>4</channels>
+				<dmastart>64</dmastart>
+			</instream>
+			<instream>
+				<name>Media Clock In</name>
+				<redundant>1</redundant>
+				<channels>1</channels>
+				<dmastart>68</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+	<entity>
+		<name>E3 Engine</name>
+		<vendor>Avid</vendor>
+		<device>E3 Engine</device>
+		<guid>1</guid>
+		<allow_any_avdeccc>1</allow_any_avdeccc>
+		<!--The Entity for the Mac should ONLY support internal sync-->
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<configuration>
+			<name>Configuration Fs48k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<name>Out Stream 1</name>
+				<pto>2000000</pto>
+				<!--<channels>60</channels>-->
+				<channels>32</channels>
+				<dmastart>64</dmastart>
+			</outstream>
+			<outstream>
+				<name>Out Stream 2</name>
+				<pto>2000000</pto>
+				<!--<channels>4</channels>-->
+				<!--<dmastart>124</dmastart>-->
+				<channels>32</channels>
+				<dmastart>96</dmastart>
+			</outstream>
+			<instream>
+				<name>In Stream 1</name>
+				<channels>32</channels>
+				<dmastart>128</dmastart>
+			</instream>
+			<instream>
+				<name>In Stream 2</name>
+				<channels>32</channels>
+				<dmastart>160</dmastart>
+			</instream>
+		</configuration>
+		<configuration>
+			<name>Configuration Fs96k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<!--enable_48k>1</enable_48k-->
+				<!--enable_882k>1</enable_882k-->
+				<enable_96k>1</enable_96k>
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<name>Out Stream 1</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>64</dmastart>
+			</outstream>
+			<outstream>
+				<name>Out Stream 2</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>80</dmastart>
+			</outstream>
+			<instream>
+				<name>In Stream 1</name>
+				<channels>16</channels>
+				<dmastart>0</dmastart>
+			</instream>
+			<instream>
+				<name>In Stream 2</name>
+				<channels>16</channels>
+				<dmastart>16</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+	<entity>
+		<name>Avid E3 AVB 8x8</name>
+		<guid>2</guid>
+		<allow_any_avdeccc>1</allow_any_avdeccc>
+		<!--The Entity for the Mac should ONLY support internal sync-->
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<configuration>
+			<name>Configuration Fs48k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<name>AVB Out 1-8</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>64</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 9-16</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>72</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 17-24</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>80</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 25-32</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>88</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 33-40</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>96</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 41-48</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>104</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 49-56</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>112</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 57-64</name>
+				<pto>2000000</pto>
+				<channels>8</channels>
+				<dmastart>120</dmastart>
+			</outstream>
+			<instream>
+				<name>AVB In 1-8</name>
+				<channels>8</channels>
+				<dmastart>128</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 9-16</name>
+				<channels>8</channels>
+				<dmastart>136</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 17-24</name>
+				<channels>8</channels>
+				<dmastart>144</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 25-32</name>
+				<channels>8</channels>
+				<dmastart>152</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 33-40</name>
+				<channels>8</channels>
+				<dmastart>160</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 41-48</name>
+				<channels>8</channels>
+				<dmastart>168</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 49-56</name>
+				<channels>8</channels>
+				<dmastart>176</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 57-64</name>
+				<channels>8</channels>
+				<dmastart>184</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+	<entity>
+		<name>Avid E3 AVB 4x16</name>
+		<guid>2</guid>
+		<allow_any_avdeccc>1</allow_any_avdeccc>
+		<!--The Entity for the Mac should ONLY support internal sync-->
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<configuration>
+			<name>Configuration Fs48k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<name>AVB Out 1-16</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>64</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 17-32</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>80</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 33-48</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>96</dmastart>
+			</outstream>
+			<outstream>
+				<name>AVB Out 49-64</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>112</dmastart>
+			</outstream>
+			<instream>
+				<name>AVB In 1-16</name>
+				<channels>16</channels>
+				<dmastart>128</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 17-32</name>
+				<channels>16</channels>
+				<dmastart>144</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 33-48</name>
+				<channels>16</channels>
+				<dmastart>160</dmastart>
+			</instream>
+			<instream>
+				<name>AVB In 49-64</name>
+				<channels>16</channels>
+				<dmastart>176</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+</avdecc_layout>
