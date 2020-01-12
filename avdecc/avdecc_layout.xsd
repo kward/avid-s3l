@@ -10,22 +10,27 @@
 							<xs:element name="name" type="xs:string" />
 							<xs:element name="vendor" type="xs:string" minOccurs="0" />
 							<xs:element name="device" type="xs:string" minOccurs="0" />
+							<!-- GUID offset value added to the created GUID from the local
+							MAC address. -->
 							<xs:element name="guid" type="xs:string" minOccurs="0" />
 							<!-- Set to 1 to allow Mac AVB driver to connect. -->
 							<xs:element name="allow_any_avdeccc" type="xs:boolean" default="0" minOccurs="0" />
 
+              <!-- Sync options. Enable the appropriate sync options based on
+              what the hardware can support. -->
 							<xs:element name="sync_internal" type="sync" minOccurs="0" />
 							<xs:element name="sync_external" type="sync" minOccurs="0" />
 							<xs:element name="sync_avb" type="sync" minOccurs="0" />
 
 							<xs:element name="defaults" minOccurs="0">
 								<!-- Global hardware defaults. If specified, they will be set at
-								`avbd` startup. -->
+								`avbd` startup. DO NOT set different values on a second
+								entity. -->
 								<xs:complexType>
 									<xs:sequence>
 										<!-- AVB sample rate. -->
 										<xs:element name="rate" type="xs:nonNegativeInteger" />
-										<!-- Index of the active sync source. -->
+										<!-- Index of the active sync source (AVB Stream number). -->
 										<xs:element name="sync" type="u32HexInt" />
 										<!-- Index of the active configuration. -->
 										<xs:element name="configuration" type="xs:nonNegativeInteger" />
