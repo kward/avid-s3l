@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="avdecc_layout">
+		<xs:complexType>
+			<xs:sequence>
+
+				<xs:element name="entity" maxOccurs="unbounded">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="name" type="xs:string" />
+							<xs:element name="vendor" type="xs:string" minOccurs="0" />
+							<xs:element name="device" type="xs:string" minOccurs="0" />
+							<xs:element name="guid" type="xs:string" minOccurs="0" />
+							<!-- Set to 1 to allow Mac AVB driver to connect. -->
+							<xs:element name="allow_any_avdeccc" type="xs:boolean" default="0" />
+
+							<xs:element name="sync_internal" type="sync" minOccurs="0" />
+							<xs:element name="sync_external" type="sync" minOccurs="0" />
+							<xs:element name="sync_avb" type="sync" minOccurs="0" />
+
+							<xs:element name="defaults" minOccurs="0">
+								<!-- Global hardware defaults. If specified, they will be set at
+								`avbd` startup. -->
+								<xs:complexType>
+									<xs:sequence>
+										<!-- AVB sample rate. -->
+										<xs:element name="rate" type="xs:nonNegativeInteger" />
+										<!-- Index of the active sync source. -->
+										<xs:element name="sync" type="xs:nonNegativeInteger" />
+										<!-- Index of the active configuration. -->
+										<xs:element name="configuration" type="xs:nonNegativeInteger" />
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element><!-- defaults -->
+
+							<xs:element name="configuration" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="name" type="xs:string" />
+
+										<xs:element name="rate">
+											<xs:complexType>
+												<xs:choice>
+													<xs:element name="enable_441k" type="xs:boolean" default="1"/>
+													<xs:element name="enable_48k" type="xs:boolean" default="1"/>
+													<xs:element name="enable_882k" type="xs:boolean" default="1"/>
+													<xs:element name="enable_96k" type="xs:boolean" default="1"/>
+													<xs:element name="enable_1764k" type="xs:boolean" default="1"/>
+													<xs:element name="enable_192k" type="xs:boolean" default="1"/>
+												</xs:choice>
+											</xs:complexType>
+										</xs:element><!-- rate -->
+
+										<xs:element name="outstream" maxOccurs="unbounded" >
+											<xs:complexType>
+												<xs:sequence>
+													<!-- If persistent_id is provided, streams with the
+													same ID will automatically connect. Supported ID range
+													is 91:E0:F0:00:FE:00 to 91:E0:F0:00:FE:FF-->
+													<xs:element name="persistent_id" type="xs:string" minOccurs="0" maxOccurs="1" />
+													<xs:element name="name" type="xs:string" />
+													<xs:element name="pto" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1" />
+													<xs:element name="redundant" type="xs:nonNegativeInteger" minOccurs="0" />
+													<xs:element name="channels" type="xs:nonNegativeInteger" />
+													<xs:element name="dmastart" type="xs:nonNegativeInteger" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element><!-- outstream -->
+
+										<xs:element name="instream" maxOccurs="unbounded" >
+											<xs:complexType>
+												<xs:sequence>
+													<!-- If persistent_id is provided, streams with the
+													same ID will automatically connect. Supported ID range
+													is 91:E0:F0:00:FE:00 to 91:E0:F0:00:FE:FF-->
+													<xs:element name="name" type="xs:string" />
+													<xs:element name="redundant" type="xs:nonNegativeInteger" minOccurs="0" />
+													<xs:element name="channels" type="xs:nonNegativeInteger" />
+													<xs:element name="dmastart" type="xs:nonNegativeInteger" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element><!-- instream -->
+
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element><!-- configuration -->
+
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element><!-- entity -->
+
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- avdecc_layout -->
+
+	<xs:complexType name="sync">
+		<xs:sequence>
+			<xs:element name="name" type="xs:string" />
+		</xs:sequence>
+	</xs:complexType><!-- sync type -->
+
+</xs:schema>
