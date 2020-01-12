@@ -12,7 +12,7 @@
 							<xs:element name="device" type="xs:string" minOccurs="0" />
 							<xs:element name="guid" type="xs:string" minOccurs="0" />
 							<!-- Set to 1 to allow Mac AVB driver to connect. -->
-							<xs:element name="allow_any_avdeccc" type="xs:boolean" default="0" />
+							<xs:element name="allow_any_avdeccc" type="xs:boolean" default="0" minOccurs="0" />
 
 							<xs:element name="sync_internal" type="sync" minOccurs="0" />
 							<xs:element name="sync_external" type="sync" minOccurs="0" />
@@ -26,7 +26,7 @@
 										<!-- AVB sample rate. -->
 										<xs:element name="rate" type="xs:nonNegativeInteger" />
 										<!-- Index of the active sync source. -->
-										<xs:element name="sync" type="xs:nonNegativeInteger" />
+										<xs:element name="sync" type="u32HexInt" />
 										<!-- Index of the active configuration. -->
 										<xs:element name="configuration" type="xs:nonNegativeInteger" />
 									</xs:sequence>
@@ -98,5 +98,15 @@
 			<xs:element name="name" type="xs:string" />
 		</xs:sequence>
 	</xs:complexType><!-- sync type -->
+
+	<xs:simpleType name="u32HexInt">
+		<xs:union memberTypes="xs:unsignedInt">
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:pattern value="0x[0-9A-Fa-f]{1,8}"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
 
 </xs:schema>
