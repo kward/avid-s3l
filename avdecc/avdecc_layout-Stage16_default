@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<avdecc_layout>
+	<entity>
+		<name>Stage16</name>
+        <vendor>Avid</vendor>
+        <device>Stage16 I/O</device>
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<!--The stage boxes don't support BNC sync-->
+		<!--sync_external>
+			<name>BNC</name>
+		</sync_external-->
+		<sync_avb>
+			<name>AVB</name>
+		</sync_avb>
+		<defaults>
+			<!--the following are global hardware defaults-->
+			<!--don't set them differently on a second entity-->
+			<!--if you specify defaults, they will be set at avbd startup-->
+			<rate>48000</rate>
+			<!--this is the index of the active sync source (AVB stream 1)-->
+			<sync>0x8001</sync>
+			<!--this is the index of the active configuration-->
+			<configuration>0</configuration>
+		</defaults>
+		<configuration>
+			<name>Configuration Fs48k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:80</persistent_id-->
+				<name>From Stage16</name>
+				<pto>645833</pto>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>0</dmastart>
+			</outstream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:00</persistent_id-->
+				<name>To Stage16</name>
+				<redundant>1</redundant>
+				<channels>12</channels>
+				<dmastart>0</dmastart>
+			</instream>
+			<instream>
+				<name>Media Clock In</name>
+				<redundant>1</redundant>
+				<channels>1</channels>
+				<dmastart>12</dmastart>
+			</instream>
+		</configuration>
+		<configuration>
+			<name>Configuration Fs96k</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<!--enable_48k>1</enable_48k-->
+				<!--enable_882k>1</enable_882k-->
+				<enable_96k>1</enable_96k>
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<!--persistent_id>91:E0:F0:00:FE:85</persistent_id-->
+				<name>From Stage16</name>
+				<pto>645833</pto>
+				<redundant>1</redundant>
+				<channels>16</channels>
+				<dmastart>0</dmastart>
+			</outstream>
+			<instream>
+				<!--persistent_id>91:E0:F0:00:FE:05</persistent_id-->
+				<name>To Stage16</name>
+				<redundant>1</redundant>
+				<channels>12</channels>
+				<dmastart>0</dmastart>
+			</instream>
+			<instream>
+				<name>Media Clock In</name>
+				<redundant>1</redundant>
+				<channels>1</channels>
+				<dmastart>12</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+</avdecc_layout>
