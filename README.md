@@ -1,2 +1,3 @@
-# avid-venue
-Tools and files related to the Avid VENUE platform.
+# avid-s3l
+
+Tools and files related to the Avid S3L and S3L-X VENUE platforms.
