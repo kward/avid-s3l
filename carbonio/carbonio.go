@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/golib/errors"
@@ -27,6 +28,14 @@ func main() {
 
 	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
 		fmt.Println(led)
+	}
+
+	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
+		led.SetState(leds.Off)
+	}
+	time.Sleep(2 * time.Second)
+	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
+		led.SetState(leds.On)
 	}
 }
 
