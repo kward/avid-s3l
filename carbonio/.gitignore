@@ -1,0 +1,5 @@
+# Bazel links.
+bazel-*
+
+# Binaries
+carbonio.arm7
