@@ -9,6 +9,7 @@ package leds
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/kward/golib/math"
 )
@@ -20,15 +21,15 @@ const (
 	maxDataLen  = 40
 )
 
-var (
-	Power, Status, Mute LED
-)
-
 type LED interface {
 	State() (LEDState, error)
-	SetState(LEDState) error
+	SetState(state LEDState) error
 	String() string
 }
+
+//-----------------------------------------------------------------------------
+// The Power LED supports the states On, Off, and Alert.
+var Power LED
 
 type powerLED struct{}
 
@@ -40,23 +41,45 @@ func (l *powerLED) State() (LEDState, error) {
 		return Unknown, err
 	}
 	switch s {
-	case 48: // "0"
+	case '0':
 		return Off, nil
-	case 49: // "1"
+	case '1':
 		return Alert, nil
-	case 50: // "2"
+	case '2':
 		return On, nil
+	case 't':
+		return testLEDState, nil
 	default:
 		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
 	}
 }
-func (l *powerLED) SetState(LEDState) error {
-	return nil
+
+func (l *powerLED) SetState(state LEDState) error {
+	var s byte
+	switch state {
+	case Off:
+		s = '0'
+	case Alert:
+		s = '1'
+	case On:
+		s = '2'
+	case testLEDState:
+		s = 't'
+	default:
+		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
+	}
+
+	return writeState(powerIface, s)
 }
+
 func (l *powerLED) String() string {
 	state, _ := l.State()
 	return fmt.Sprintf("Power LED %s", state)
 }
+
+//-----------------------------------------------------------------------------
+// The Status LED supports the states On, Off, and Alert.
+var Status LED
 
 type statusLED struct{}
 
@@ -68,23 +91,42 @@ func (l *statusLED) State() (LEDState, error) {
 		return Unknown, err
 	}
 	switch s {
-	case 48: // "0"
+	case '0':
 		return Off, nil
-	case 49: // "1"
+	case '1':
 		return Alert, nil
-	case 50: // "2"
+	case '2':
 		return On, nil
+	case 255:
+		return testLEDState, nil
 	default:
 		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
 	}
 }
-func (l *statusLED) SetState(LEDState) error {
-	return nil
+func (l *statusLED) SetState(state LEDState) error {
+	var s byte
+	switch state {
+	case Off:
+		s = '0'
+	case Alert:
+		s = '1'
+	case On:
+		s = '2'
+	case testLEDState:
+		s = 't'
+	default:
+		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
+	}
+	return writeState(statusIface, s)
 }
 func (l *statusLED) String() string {
 	state, _ := l.State()
 	return fmt.Sprintf("State LED %s", state)
 }
+
+//-----------------------------------------------------------------------------
+// The Mute LED supports the states On and Off.
+var Mute LED
 
 type muteLED struct{}
 
@@ -96,21 +138,36 @@ func (l *muteLED) State() (LEDState, error) {
 		return Unknown, err
 	}
 	switch s {
-	case 48: // "0"
+	case '0':
 		return Off, nil
-	case 49: // "1"
+	case '1':
 		return On, nil
+	case 255:
+		return testLEDState, nil
 	default:
 		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
 	}
 }
-func (l *muteLED) SetState(LEDState) error {
-	return nil
+func (l *muteLED) SetState(state LEDState) error {
+	var s byte
+	switch state {
+	case Off:
+		s = '0'
+	case On:
+		s = '1'
+	case testLEDState:
+		s = 't'
+	default:
+		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
+	}
+	return writeState(muteIface, s)
 }
 func (l *muteLED) String() string {
 	state, _ := l.State()
 	return fmt.Sprintf("Mute LED %s", state)
 }
+
+//=============================================================================
 
 var readFileFn = ioutil.ReadFile
 
@@ -119,10 +176,16 @@ func readState(filename string) (byte, error) {
 	if err != nil {
 		return 0, err
 	}
-	if len(data) != 2 || data[1] != 10 {
+	if len(data) != 2 || data[1] != '\n' {
 		return 0, fmt.Errorf("%q contains unexpected data; %v", filename, data[0:math.MinInt(len(data), maxDataLen)])
 	}
 	return data[0], nil
+}
+
+var writeFileFn = ioutil.WriteFile
+
+func writeState(filename string, s byte) error {
+	return writeFileFn(filename, []byte{s, '\n'}, os.FileMode(0644))
 }
 
 func init() {

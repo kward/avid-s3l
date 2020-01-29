@@ -9,4 +9,5 @@ const (
 	Off
 	Alert
 	On
+	testLEDState LEDState = 255
 )
