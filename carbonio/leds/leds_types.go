@@ -1,6 +1,6 @@
 package leds
 
-//go:generate stringer -type=LEDState ledstates.go
+//go:generate stringer -output leds_string.go -type=LEDState leds_types.go
 
 type LEDState int
 
