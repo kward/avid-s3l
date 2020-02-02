@@ -7,9 +7,11 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/kward/avid-s3l/carbonio/leds"
+	"github.com/kward/avid-s3l/carbonio/signals"
 	"github.com/kward/golib/errors"
 	"google.golang.org/grpc/codes"
 )
@@ -26,17 +28,40 @@ func main() {
 	}
 	fmt.Printf("ip: %v\n", ip)
 
-	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
-		fmt.Println(led)
+	// LEDs.
+	ls := []*leds.LED{leds.Power, leds.Status, leds.Mute}
+	for _, l := range ls {
+		fmt.Println(l)
 	}
-
-	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
-		led.SetState(leds.Off)
+	fmt.Println("Toggling LEDs…")
+	for _, l := range ls {
+		l.SetState(leds.Off)
 	}
 	time.Sleep(2 * time.Second)
-	for _, led := range []leds.LED{leds.Power, leds.Status, leds.Mute} {
-		led.SetState(leds.On)
+	for _, l := range ls {
+		l.SetState(leds.On)
 	}
+
+	// Signals.
+	s, err := signals.New(
+		"Test Signal",
+		signals.Number(1),
+		signals.MaxNumber(16),
+		signals.Direction(signals.Input),
+	)
+	if err != nil {
+		fmt.Printf("error instantiating signal: %v\n", err)
+		os.Exit(1)
+	}
+	pad, err := s.Pad()
+	if err != nil {
+		fmt.Printf("error reading pad: %v\n", err)
+	}
+	fmt.Printf("Pad: %t\n", pad)
+	fmt.Println("Toggling Pad…")
+	s.SetPad(true)
+	time.Sleep(2 * time.Second)
+	s.SetPad(false)
 }
 
 // linkLocalIP returns the link local IP of the device.
@@ -59,10 +84,6 @@ func linkLocalIP() (net.IP, error) {
 				ip = v.IP
 			case *net.IPAddr:
 				ip = v.IP
-			}
-
-			if len(ip) != 4 {
-				continue
 			}
 			if ip.IsLinkLocalUnicast() {
 				return ip, nil
