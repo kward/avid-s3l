@@ -25,7 +25,6 @@ func (o *options) validate() error {
 func Number(v int) func(*options) error {
 	return func(o *options) error { return o.setNumber(v) }
 }
-
 func (o *options) setNumber(v int) error {
 	o.num = v
 	return nil
@@ -34,7 +33,6 @@ func (o *options) setNumber(v int) error {
 func MaxNumber(v int) func(*options) error {
 	return func(o *options) error { return o.setMaxNumber(v) }
 }
-
 func (o *options) setMaxNumber(v int) error {
 	o.maxNum = v
 	return nil
@@ -43,7 +41,6 @@ func (o *options) setMaxNumber(v int) error {
 func Connector(v Conn) func(*options) error {
 	return func(o *options) error { return o.setConnector(v) }
 }
-
 func (o *options) setConnector(v Conn) error {
 	o.conn = v
 	return nil
@@ -52,7 +49,6 @@ func (o *options) setConnector(v Conn) error {
 func Direction(v Dir) func(*options) error {
 	return func(o *options) error { return o.setDirection(v) }
 }
-
 func (o *options) setDirection(v Dir) error {
 	o.dir = v
 	return nil
@@ -61,7 +57,6 @@ func (o *options) setDirection(v Dir) error {
 func Format(v Fmt) func(*options) error {
 	return func(o *options) error { return o.setFormat(v) }
 }
-
 func (o *options) setFormat(v Fmt) error {
 	o.fmt = v
 	return nil
@@ -70,7 +65,6 @@ func (o *options) setFormat(v Fmt) error {
 func Level(v Lvl) func(*options) error {
 	return func(o *options) error { return o.setLevel(v) }
 }
-
 func (o *options) setLevel(v Lvl) error {
 	o.lvl = v
 	return nil
