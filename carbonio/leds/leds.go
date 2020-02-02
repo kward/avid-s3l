@@ -15,163 +15,71 @@ import (
 )
 
 const (
-	powerIface  = "/sys/bus/spi/devices/spi4.0/status_led_1_en"
-	statusIface = "/sys/bus/spi/devices/spi4.0/status_led_0_en"
-	muteIface   = "/sys/bus/spi/devices/spi4.0/mute_led_en"
-	maxDataLen  = 40
+	maxDataLen = 40
 )
 
-type LED interface {
-	State() (LEDState, error)
-	SetState(state LEDState) error
-	String() string
+type value byte
+type byState map[State]value
+type byValue map[value]State
+
+// LED describes the struct for any LED.
+type LED struct {
+	name   string
+	iface  string
+	states byState
+	values byValue
 }
 
-//-----------------------------------------------------------------------------
-// The Power LED supports the states On, Off, and Alert.
-var Power LED
+// New instantiates a new LED.
+func New(name string, iface string, states byState) *LED {
+	led := &LED{
+		name:   name,
+		iface:  iface,
+		states: states,
+		values: byValue{},
+	}
+	for k, v := range led.states {
+		led.values[v] = k
+	}
+	return led
+}
 
-type powerLED struct{}
-
-var _ LED = new(powerLED)
-
-func (l *powerLED) State() (LEDState, error) {
-	s, err := readState(powerIface)
+// State returns the active state of the LED.
+func (l *LED) State() (State, error) {
+	v, err := readValue(l.iface)
 	if err != nil {
 		return Unknown, err
 	}
-	switch s {
-	case '0':
-		return Off, nil
-	case '1':
-		return Alert, nil
-	case '2':
-		return On, nil
-	case 't':
-		return testLEDState, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
+	s, ok := l.values[v]
+	if !ok {
+		return Unknown, fmt.Errorf("unrecognized LED value %q [%d]", v, v)
 	}
+	return s, nil
 }
 
-func (l *powerLED) SetState(state LEDState) error {
-	var s byte
-	switch state {
-	case Off:
-		s = '0'
-	case Alert:
-		s = '1'
-	case On:
-		s = '2'
-	case testLEDState:
-		s = 't'
-	default:
-		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
+// SetState changes the state of the LED.
+func (l *LED) SetState(s State) error {
+	var v value
+	v, ok := l.states[s]
+	if !ok {
+		return fmt.Errorf("unrecognized LED state %q [%d]", s, s)
 	}
 
-	return writeState(powerIface, s)
+	return writeValue(l.iface, v)
 }
 
-func (l *powerLED) String() string {
-	state, _ := l.State()
-	return fmt.Sprintf("Power LED %s", state)
-}
-
-//-----------------------------------------------------------------------------
-// The Status LED supports the states On, Off, and Alert.
-var Status LED
-
-type statusLED struct{}
-
-var _ LED = new(statusLED)
-
-func (l *statusLED) State() (LEDState, error) {
-	s, err := readState(statusIface)
-	if err != nil {
-		return Unknown, err
-	}
-	switch s {
-	case '0':
-		return Off, nil
-	case '1':
-		return Alert, nil
-	case '2':
-		return On, nil
-	case 255:
-		return testLEDState, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
-	}
-}
-func (l *statusLED) SetState(state LEDState) error {
-	var s byte
-	switch state {
-	case Off:
-		s = '0'
-	case Alert:
-		s = '1'
-	case On:
-		s = '2'
-	case testLEDState:
-		s = 't'
-	default:
-		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
-	}
-	return writeState(statusIface, s)
-}
-func (l *statusLED) String() string {
-	state, _ := l.State()
-	return fmt.Sprintf("State LED %s", state)
-}
-
-//-----------------------------------------------------------------------------
-// The Mute LED supports the states On and Off.
-var Mute LED
-
-type muteLED struct{}
-
-var _ LED = new(muteLED)
-
-func (l *muteLED) State() (LEDState, error) {
-	s, err := readState(muteIface)
-	if err != nil {
-		return Unknown, err
-	}
-	switch s {
-	case '0':
-		return Off, nil
-	case '1':
-		return On, nil
-	case 255:
-		return testLEDState, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized LEDState %q [%d]", s, s)
-	}
-}
-func (l *muteLED) SetState(state LEDState) error {
-	var s byte
-	switch state {
-	case Off:
-		s = '0'
-	case On:
-		s = '1'
-	case testLEDState:
-		s = 't'
-	default:
-		return fmt.Errorf("unrecognized LEDState %q [%d]", state, state)
-	}
-	return writeState(muteIface, s)
-}
-func (l *muteLED) String() string {
-	state, _ := l.State()
-	return fmt.Sprintf("Mute LED %s", state)
+// String provides a human readable state output.
+func (l *LED) String() string {
+	s, _ := l.State()
+	return fmt.Sprintf("%s LED %s", l.name, s)
 }
 
 //=============================================================================
 
 var readFileFn = ioutil.ReadFile
 
-func readState(filename string) (byte, error) {
+// readValue from the SPI interface.
+func readValue(filename string) (value, error) {
 	data, err := readFileFn(filename)
 	if err != nil {
 		return 0, err
@@ -179,17 +87,35 @@ func readState(filename string) (byte, error) {
 	if len(data) != 2 || data[1] != '\n' {
 		return 0, fmt.Errorf("%q contains unexpected data; %v", filename, data[0:math.MinInt(len(data), maxDataLen)])
 	}
-	return data[0], nil
+	return value(data[0]), nil
 }
 
 var writeFileFn = ioutil.WriteFile
 
-func writeState(filename string, s byte) error {
-	return writeFileFn(filename, []byte{s, '\n'}, os.FileMode(0644))
+// writeValue to the SPI interface.
+func writeValue(filename string, v value) error {
+	return writeFileFn(filename, []byte{byte(v), '\n'}, os.FileMode(0644))
 }
 
+//=============================================================================
+
+var (
+	// Power provides access to the Power LED.
+	Power *LED
+	// Status provides access to the Status LED.
+	Status *LED
+	// Mute provides access to the Mute LED.
+	Mute *LED
+)
+
 func init() {
-	Power = new(powerLED)
-	Status = new(statusLED)
-	Mute = new(muteLED)
+	Power = New("Power", "/sys/bus/spi/devices/spi4.0/status_led_1_en",
+		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+	)
+	Status = New("Status", "/sys/bus/spi/devices/spi4.0/status_led_0_en",
+		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+	)
+	Mute = New("Mute", "/sys/bus/spi/devices/spi4.0/mute_led_en",
+		byState{Off: '0', On: '1', testState: 255},
+	)
 }

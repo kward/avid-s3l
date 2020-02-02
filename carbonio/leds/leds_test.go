@@ -8,17 +8,21 @@ import (
 	"github.com/kward/golib/operators"
 )
 
-type testCase struct {
-	desc  string
-	state LEDState
-	data  []byte
-	ok    bool
-}
+func TestLED(t *testing.T) {
+	led := New("Blinky", "/path/to/blinky",
+		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+	)
 
-var (
-	testCases = []testCase{
+	for _, tc := range []struct {
+		desc  string
+		state State
+		data  []byte
+		ok    bool
+	}{
 		// Common states.
 		{"off", Off, []byte{'0', '\n'}, true},
+		{"on", On, []byte{'2', '\n'}, true},
+		{"alert", Alert, []byte{'1', '\n'}, true},
 		// Unknown states.
 		{"unknown", Unknown, []byte{123, '\n'}, false},
 		// Data errors.
@@ -27,16 +31,7 @@ var (
 		{"wrong termination", Unknown, []byte{'2', 34}, false},
 		// ReadFile errors.
 		{"readfile error", Unknown, []byte{}, false},
-	}
-)
-
-func TestPowerLED(t *testing.T) {
-	led := new(powerLED)
-
-	for _, tc := range append(testCases, []testCase{
-		{"on", On, []byte{'2', '\n'}, true},
-		{"alert", Alert, []byte{'1', '\n'}, true},
-	}...) {
+	} {
 		t.Run(fmt.Sprintf("State() %s", tc.desc), func(t *testing.T) {
 			prepareReadFile(tc.data, tc.ok)
 			got, err := led.State()
@@ -51,89 +46,6 @@ func TestPowerLED(t *testing.T) {
 			}
 			if want := tc.state; got != want {
 				t.Errorf("= %s, want %s", got, want)
-			}
-		})
-
-		t.Run(fmt.Sprintf("SetState() %s", tc.desc), func(t *testing.T) {
-			prepareWriteFile(tc.ok)
-			err := led.SetState(tc.state)
-			if err != nil && tc.ok == true {
-				t.Fatalf("unexpected error %q", err)
-			}
-			if err == nil && tc.ok == false {
-				t.Fatalf("expected an error")
-			}
-			if !tc.ok {
-				return
-			}
-			if got, want := wfData, tc.data; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
-			}
-		})
-	}
-}
-
-func TestStatusLED(t *testing.T) {
-	led := new(statusLED)
-	for _, tc := range append(testCases, []testCase{
-		{"on", On, []byte{'2', '\n'}, true},
-		{"alert", Alert, []byte{'1', '\n'}, true},
-	}...) {
-		t.Run(fmt.Sprintf("State() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.data, tc.ok)
-			got, err := led.State()
-			if err != nil && tc.ok == true {
-				t.Fatalf("unexpected error %q", err)
-			}
-			if err == nil && tc.ok == false {
-				t.Fatalf("expected an error")
-			}
-			if !tc.ok {
-				return
-			}
-			if want := tc.state; got != want {
-				t.Errorf("State() = %s, want %s", got, want)
-			}
-		})
-
-		t.Run(fmt.Sprintf("SetState() %s", tc.desc), func(t *testing.T) {
-			prepareWriteFile(tc.ok)
-			err := led.SetState(tc.state)
-			if err != nil && tc.ok == true {
-				t.Fatalf("unexpected error %q", err)
-			}
-			if err == nil && tc.ok == false {
-				t.Fatalf("expected an error")
-			}
-			if !tc.ok {
-				return
-			}
-			if got, want := wfData, tc.data; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
-			}
-		})
-	}
-}
-
-func TestMuteLED(t *testing.T) {
-	led := new(muteLED)
-	for _, tc := range append(testCases, []testCase{
-		{"on", On, []byte{'1', '\n'}, true},
-	}...) {
-		t.Run(fmt.Sprintf("State() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.data, tc.ok)
-			got, err := led.State()
-			if err != nil && tc.ok == true {
-				t.Fatalf("unexpected error %q", err)
-			}
-			if err == nil && tc.ok == false {
-				t.Fatalf("expected an error")
-			}
-			if !tc.ok {
-				return
-			}
-			if want := tc.state; got != want {
-				t.Errorf("State() = %s, want %s", got, want)
 			}
 		})
 

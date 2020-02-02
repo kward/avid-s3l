@@ -1,13 +1,13 @@
 package leds
 
-//go:generate stringer -output leds_string.go -type=LEDState leds_types.go
+//go:generate stringer -output leds_string.go -type=State leds_types.go
 
-type LEDState int
+type State int
 
 const (
-	Unknown LEDState = iota
+	Unknown State = iota
 	Off
 	Alert
 	On
-	testLEDState LEDState = 255
+	testState State = 255
 )
