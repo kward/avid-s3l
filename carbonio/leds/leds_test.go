@@ -5,8 +5,17 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kward/avid-s3l/carbonio/helpers"
 	"github.com/kward/golib/operators"
 )
+
+func TestMain(m *testing.M) {
+	// Override function pointers for testing.
+	helpers.ReadFileFn = readFile
+	helpers.WriteFileFn = writeFile
+
+	os.Exit(m.Run())
+}
 
 func TestLED(t *testing.T) {
 	led := New("Blinky", "/path/to/blinky",
@@ -19,7 +28,7 @@ func TestLED(t *testing.T) {
 		data  []byte
 		ok    bool
 	}{
-		// Common states.
+		// Supported states.
 		{"off", Off, []byte{'0', '\n'}, true},
 		{"on", On, []byte{'2', '\n'}, true},
 		{"alert", Alert, []byte{'1', '\n'}, true},
@@ -35,10 +44,10 @@ func TestLED(t *testing.T) {
 		t.Run(fmt.Sprintf("State() %s", tc.desc), func(t *testing.T) {
 			prepareReadFile(tc.data, tc.ok)
 			got, err := led.State()
-			if err != nil && tc.ok == true {
+			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
-			if err == nil && tc.ok == false {
+			if err == nil && !tc.ok {
 				t.Fatalf("expected an error")
 			}
 			if !tc.ok {
@@ -52,10 +61,10 @@ func TestLED(t *testing.T) {
 		t.Run(fmt.Sprintf("SetState() %s", tc.desc), func(t *testing.T) {
 			prepareWriteFile(tc.ok)
 			err := led.SetState(tc.state)
-			if err != nil && tc.ok == true {
+			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
-			if err == nil && tc.ok == false {
+			if err == nil && !tc.ok {
 				t.Fatalf("expected an error")
 			}
 			if !tc.ok {
@@ -66,14 +75,6 @@ func TestLED(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestMain(m *testing.M) {
-	// Override function pointers in leds for testing.
-	readFileFn = readFile
-	writeFileFn = writeFile
-
-	os.Exit(m.Run())
 }
 
 var (
@@ -95,10 +96,10 @@ func readFile(filename string) ([]byte, error) {
 }
 
 func prepareWriteFile(ok bool) {
+	wfErr = nil
 	if !ok {
 		wfErr = fmt.Errorf("WriteFile error for testing")
 	}
-	wfErr = nil
 }
 
 // writeFile matches the signature of io.WriteFile.

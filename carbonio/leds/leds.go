@@ -8,21 +8,36 @@ package leds
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
-	"github.com/kward/golib/math"
+	"github.com/kward/avid-s3l/carbonio/helpers"
 )
 
-const (
-	maxDataLen = 40
+var (
+	// Power provides access to the Power LED.
+	Power *LED
+	// Status provides access to the Status LED.
+	Status *LED
+	// Mute provides access to the Mute LED.
+	Mute *LED
 )
+
+func init() {
+	Power = New("Power", "/sys/bus/spi/devices/spi4.0/status_led_1_en",
+		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+	)
+	Status = New("Status", "/sys/bus/spi/devices/spi4.0/status_led_0_en",
+		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+	)
+	Mute = New("Mute", "/sys/bus/spi/devices/spi4.0/mute_led_en",
+		byState{Off: '0', On: '1', testState: 255},
+	)
+}
 
 type value byte
 type byState map[State]value
 type byValue map[value]State
 
-// LED describes the struct for any LED.
+// LED describes a Carbon I/O LED.
 type LED struct {
 	name   string
 	iface  string
@@ -46,11 +61,11 @@ func New(name string, iface string, states byState) *LED {
 
 // State returns the active state of the LED.
 func (l *LED) State() (State, error) {
-	v, err := readValue(l.iface)
+	v, err := helpers.ReadByte(l.iface)
 	if err != nil {
 		return Unknown, err
 	}
-	s, ok := l.values[v]
+	s, ok := l.values[value(v)]
 	if !ok {
 		return Unknown, fmt.Errorf("unrecognized LED value %q [%d]", v, v)
 	}
@@ -65,57 +80,11 @@ func (l *LED) SetState(s State) error {
 		return fmt.Errorf("unrecognized LED state %q [%d]", s, s)
 	}
 
-	return writeValue(l.iface, v)
+	return helpers.WriteByte(l.iface, byte(v))
 }
 
 // String provides a human readable state output.
 func (l *LED) String() string {
 	s, _ := l.State()
 	return fmt.Sprintf("%s LED %s", l.name, s)
-}
-
-//=============================================================================
-
-var readFileFn = ioutil.ReadFile
-
-// readValue from the SPI interface.
-func readValue(filename string) (value, error) {
-	data, err := readFileFn(filename)
-	if err != nil {
-		return 0, err
-	}
-	if len(data) != 2 || data[1] != '\n' {
-		return 0, fmt.Errorf("%q contains unexpected data; %v", filename, data[0:math.MinInt(len(data), maxDataLen)])
-	}
-	return value(data[0]), nil
-}
-
-var writeFileFn = ioutil.WriteFile
-
-// writeValue to the SPI interface.
-func writeValue(filename string, v value) error {
-	return writeFileFn(filename, []byte{byte(v), '\n'}, os.FileMode(0644))
-}
-
-//=============================================================================
-
-var (
-	// Power provides access to the Power LED.
-	Power *LED
-	// Status provides access to the Status LED.
-	Status *LED
-	// Mute provides access to the Mute LED.
-	Mute *LED
-)
-
-func init() {
-	Power = New("Power", "/sys/bus/spi/devices/spi4.0/status_led_1_en",
-		byState{Off: '0', Alert: '1', On: '2', testState: 255},
-	)
-	Status = New("Status", "/sys/bus/spi/devices/spi4.0/status_led_0_en",
-		byState{Off: '0', Alert: '1', On: '2', testState: 255},
-	)
-	Mute = New("Mute", "/sys/bus/spi/devices/spi4.0/mute_led_en",
-		byState{Off: '0', On: '1', testState: 255},
-	)
 }
