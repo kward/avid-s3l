@@ -1,32 +1,40 @@
 // Package signals represents different types of physical signals available.
 package signals
 
-//go:generate stringer -output=signal_string.go -type=Connector,Format,Level
+//go:generate stringer -output=signals_string.go -type=Dir,Conn,Fmt,Lvl signals_types.go
 
-type Connector int
+// Dir represents the signal direction.
+type Dir int
 
 const (
-	XLRConnector Connector = iota
-	JackConnector
+	unknownDir Dir = iota
+	Input
+	Output
 )
 
-type Format int
+// Conn represents the physical connection.
+type Conn int
 
 const (
-	AnalogFormat Format = iota
-	AESFormat
+	unknownConn Conn = iota
+	XLR
+	Jack
 )
 
-type Level int
+// Fmt represents the signal format.
+type Fmt int
 
 const (
-	LineLevel Level = iota
-	MicLevel
+	unknownFmt Fmt = iota
+	Analog
+	AES
 )
 
-type Pad int
+// Lvl represents the signal level.
+type Lvl int
 
 const (
-	PadDisabled = iota
-	PadEnabled
+	unknownLvl Lvl = iota
+	Line
+	Mic
 )
