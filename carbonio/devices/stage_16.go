@@ -1,8 +1,7 @@
 package devices
 
 import (
-	"fmt"
-
+	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/avid-s3l/carbonio/signals"
 )
 
@@ -15,7 +14,8 @@ const (
 type Stage16 struct {
 	opts *options
 
-	micInputs map[int]*signals.Signal
+	powerLED, statusLED, muteLED *leds.LED
+	micInputs                    signals.Signals
 }
 
 // Verify that the interface is implemented properly.
@@ -31,26 +31,19 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	}
 
 	d := &Stage16{
-		opts:      o,
-		micInputs: map[int]*signals.Signal{},
+		opts: o,
 	}
 
-	// Counting inputs from 1, i.e. 1-16 (not 0-15).
-	for i := 1; i <= numMicInputs; i++ {
-		input, err := signals.New(
-			fmt.Sprintf("Mic input #%d", i),
-			signals.Number(i),
-			signals.MaxNumber(numMicInputs),
-			signals.Direction(signals.Input),
-			signals.Connector(signals.XLR),
-			signals.Format(signals.Analog),
-			signals.Level(signals.Mic),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("error instantiating input %d; %s", i, err)
-		}
-		d.micInputs[i] = input
+	// LEDs
+	d.powerLED = leds.Power
+	d.statusLED = leds.Status
+	d.muteLED = leds.Mute
+
+	s, err := signals.MicInputs(numMicInputs)
+	if err != nil {
+		return nil, err
 	}
+	d.micInputs = s
 
 	return d, nil
 }

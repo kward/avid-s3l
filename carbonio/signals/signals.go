@@ -1,45 +1,56 @@
-// Package signals provides control over the Carbon I/O signals.
-//
-// The Avid S3L signals are controlled through the kernel interface of the spi
-// device. The current state of the signal can be read by looking at the
-// contents of the file that represents the device interface. Changing the state
-// can be done by writing to the same interface.
+/*
+Package signals provides control over the Carbon I/O signals.
+
+The Avid S3L signals are controlled through the kernel interface of the `spi`
+device. The current state of the signal can be read by looking at the contents
+of the file that represents the device interface. Changing the state can be done
+by writing to the same interface.
+*/
 package signals
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/kward/avid-s3l/carbonio/helpers"
 )
 
-const (
-	NumMicInputs   = 16
-	NumLineOutputs = 8
-	NumAESOutputs  = 2
-)
+func MicInputs(numInputs uint) (Signals, error) {
+	if numInputs == 0 {
+		return nil, fmt.Errorf("invalid number of inputs %d", numInputs)
+	}
 
-var (
-	MicInputs   []Signal
-	LineOutputs []Signal
-	AESOutputs  []Signal
-)
+	// Mic inputs. Counting inputs from 1, i.e. 1-16 (not 0-15).
+	ss := Signals{}
+	for i := uint(1); i <= numInputs; i++ {
+		s, err := New(
+			fmt.Sprintf("Mic input #%d", i),
+			Number(i),
+			MaxNumber(numInputs),
+			Direction(Input),
+			Connector(XLR),
+			Format(Analog),
+			Level(Mic),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error instantiating input %d; %s", i, err)
+		}
+		ss[i] = s
+	}
 
-func init() {
-
+	return ss, nil
 }
+
+type Signals map[uint]*Signal
 
 // Signal describes a Carbon I/O signal.
 type Signal struct {
 	opts *options
 	name string
 
-	gain    int
-	pad     bool
-	padFile string
-	phantom bool
-
-	iface   string
-	channel string
+	padSPI     string
+	phantomSPI string
 }
 
 // New instantiates a new Signal.
@@ -54,21 +65,24 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		return nil, err
 	}
 
-	signal := &Signal{
+	var chSPI, chPre string
+
+	s := &Signal{
 		opts: o,
 		name: name,
 	}
 	switch o.dir {
 	case Input:
-		signal.iface = inputDevicePath(o.num)
-		signal.channel = inputChannelPrefix(o.num)
+		chSPI = channelSPI(o.num, o.maxNum)
+		chPre = channelPrefix(o.num, o.maxNum)
 	default:
 		return nil, fmt.Errorf("unsupported signal direction %s", o.dir)
 	}
 
-	signal.padFile = fmt.Sprintf("%s/%s_pad_en", signal.iface, signal.channel)
+	s.padSPI = fmt.Sprintf("%s/%s_pad_en", chSPI, chPre)
+	s.phantomSPI = phantomSPI(o.num, o.maxNum)
 
-	return signal, nil
+	return s, nil
 }
 
 func (s *Signal) Connector() Conn { return s.opts.conn }
@@ -77,7 +91,7 @@ func (s *Signal) Level() Lvl      { return s.opts.lvl }
 
 // Pad returns the state of the -20 dB pad.
 func (s *Signal) Pad() (bool, error) {
-	v, err := helpers.ReadByte(s.padFile)
+	v, err := helpers.ReadByte(s.padSPI)
 	if err != nil {
 		return false, fmt.Errorf("error reading pad; %s", err)
 	}
@@ -98,27 +112,79 @@ func (s *Signal) SetPad(pad bool) error {
 	if pad {
 		v = '1'
 	}
-	return helpers.WriteByte(s.padFile, byte(v))
+	return helpers.WriteByte(s.padSPI, byte(v))
 }
 
+// Phantom returns the state of the -48 V phantom.
+//
+// Phantom states are stored as 4 bit values of a byte, with the lowest signal
+// number in the highest bit. The byte itself is stored as a string.
+//
+// 1 = 8 (0b00001000)
+// 2 = 4 (0b00000100)
+// 3 = 2 (0b00000010)
+// 4 = 1 (0b00000001)
 func (s *Signal) Phantom() (bool, error) {
-	return false, fmt.Errorf("unimplemented")
+	u, err := readPhantom(s)
+	if err != nil {
+		return false, err
+	}
+
+	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
+	return u&v > 0, nil
 }
 
-func (s *Signal) SetPhantom(v bool) error {
-	return fmt.Errorf("unimplemented")
+// SetPhantom for the given signal.
+//
+// The phantom is controlled with the "spi4.0/adcX_phantom_en" interface.
+func (s *Signal) SetPhantom(phantom bool) error {
+	u, err := readPhantom(s)
+	if err != nil {
+		return err
+	}
+
+	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
+	if phantom {
+		u = u | v
+	} else {
+		u = u & ^v
+	}
+
+	if err := helpers.WriteFile(s.phantomSPI, fmt.Sprintf("%d", u)); err != nil {
+		return fmt.Errorf("error writing phantom; %s", err)
+	}
+	return nil
 }
 
-// inputDevicePath maps the input signal to the appropriate SPI device path.
+func readPhantom(s *Signal) (uint, error) {
+	data, err := helpers.ReadFileFn(s.phantomSPI)
+	if err != nil {
+		return 0, fmt.Errorf("error reading phantom; %s", err)
+	}
+	// Convert data (slice of bytes) to a uint.
+	str := strings.Split(fmt.Sprintf("%s", data), "\n")[0]
+	u64, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("error converting %q to an int; %s", data, err)
+	}
+	return uint(u64), nil
+}
+
+// channeSPI maps the input number to the appropriate SPI device path.
 //
 // Input signals are controlled with individual files using the SPI device
 // interface. The inputs are spread across devices (e.g., "spi1.1" for input
 // signal 1, or "spi1.2" for input signal 16).
 //
-// See also `inputChannelPrefix()`.
-func inputDevicePath(i int) string {
+// See also `channelPrefix()`.
+func channelSPI(num, maxNum uint) string {
 	const spi = "/sys/bus/spi/devices/spi1."
-	switch i {
+
+	if num < 1 || num > maxNum {
+		return "unknown"
+	}
+
+	switch num {
 	case 1, 2, 3, 4:
 		return spi + "1"
 	case 5, 6, 7, 8:
@@ -132,16 +198,44 @@ func inputDevicePath(i int) string {
 	}
 }
 
-// inputChannelPrefix maps the input signal to the appropriate channel prefix.
+// channelPrefix maps the input number to the appropriate channel prefix.
 //
 // Input signals are controlled with individual files using the SPI device
-// interface. The inputs are spread across devices and are prefixed with a chX
-// value (e.g., "ch0" for input signal 1, or "ch3" for input signal 16).
+// interface. The inputs are spread across devices and channels are prefixed
+// with a chX value (e.g., "ch0" for input #1, or "ch3" for input #16).
 //
-// See also `inputDevicePath()`.
-func inputChannelPrefix(i int) string {
-	if i < 1 || i > NumMicInputs {
+// See also `channelSPI()`.
+func channelPrefix(num, maxNum uint) string {
+	if num < 1 || num > maxNum {
 		return "unknown"
 	}
-	return fmt.Sprintf("ch%d", (i-1)%4)
+	return fmt.Sprintf("ch%d", (num-1)%4)
+}
+
+// phantomSPI maps the input number to the appropriate SPI device path.
+//
+// Input signals are controlled with individual files using the SPI device
+// interface. The inputs are spread across devices and phantoms are prefixed
+// with a adcX value (e.g., "adc1" for input #1, or "adc2" for input #16).
+//
+// See also `channelPrefix()`.
+func phantomSPI(num, maxNum uint) string {
+	const spi = "/sys/bus/spi/devices/spi4.0/"
+
+	if num < 1 || num > maxNum {
+		return "unknown"
+	}
+
+	switch num {
+	case 1, 2, 3, 4:
+		return spi + "adc1_phantom_en"
+	case 5, 6, 7, 8:
+		return spi + "adc0_phantom_en"
+	case 9, 10, 11, 12:
+		return spi + "adc3_phantom_en"
+	case 13, 14, 15, 16:
+		return spi + "adc2_phantom_en"
+	default:
+		return "unknown"
+	}
 }

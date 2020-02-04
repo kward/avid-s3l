@@ -1,4 +1,3 @@
-// Package signals represents different types of physical signals available.
 package signals
 
 //go:generate stringer -output=signals_string.go -type=Dir,Conn,Fmt,Lvl signals_types.go

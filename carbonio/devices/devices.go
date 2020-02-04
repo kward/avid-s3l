@@ -1,4 +1,6 @@
-// Package devices enables control of specific Avid S3L devices.
+/*
+Package devices enables control of specific Avid S3L devices.
+*/
 package devices
 
 import "net"

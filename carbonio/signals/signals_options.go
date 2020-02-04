@@ -3,8 +3,8 @@ package signals
 import "fmt"
 
 type options struct {
-	num    int // Signal number (1-based, i.e. 1 is the first signal number).
-	maxNum int // Maximum number of signals of this type.
+	num    uint // Signal number (1-based, i.e. 1 is the first signal number).
+	maxNum uint // Maximum number of signals of this type.
 
 	dir  Dir
 	conn Conn
@@ -22,18 +22,18 @@ func (o *options) validate() error {
 	return nil
 }
 
-func Number(v int) func(*options) error {
+func Number(v uint) func(*options) error {
 	return func(o *options) error { return o.setNumber(v) }
 }
-func (o *options) setNumber(v int) error {
+func (o *options) setNumber(v uint) error {
 	o.num = v
 	return nil
 }
 
-func MaxNumber(v int) func(*options) error {
+func MaxNumber(v uint) func(*options) error {
 	return func(o *options) error { return o.setMaxNumber(v) }
 }
-func (o *options) setMaxNumber(v int) error {
+func (o *options) setMaxNumber(v uint) error {
 	o.maxNum = v
 	return nil
 }
