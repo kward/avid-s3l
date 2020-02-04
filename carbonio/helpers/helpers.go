@@ -2,6 +2,7 @@
 package helpers
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,8 @@ import (
 )
 
 const maxDataLen = 32
+
+var fileMode = os.FileMode(0644)
 
 // ReadFileFn holds a pointer to the ioutil.ReadFile function. This pointer can
 // be overridden for testing.
@@ -33,5 +36,19 @@ var WriteFileFn = ioutil.WriteFile
 
 // WriteByte to the SPI interface.
 func WriteByte(filename string, v byte) error {
-	return WriteFileFn(filename, []byte{v, '\n'}, os.FileMode(0644))
+	return WriteFileFn(filename, []byte{v, '\n'}, fileMode)
+}
+
+// WriteFile to the SPI interface.
+func WriteFile(filename string, data string) error {
+	buf := bytes.NewBuffer(nil)
+	_, err := buf.WriteString(data)
+	if err != nil {
+		return fmt.Errorf("error writing string to buffer; %s", err)
+	}
+	err = buf.WriteByte('\n')
+	if err != nil {
+		return fmt.Errorf("error writing newline to buffer; %s", err)
+	}
+	return WriteFileFn(filename, buf.Bytes(), fileMode)
 }
