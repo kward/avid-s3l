@@ -1,4 +1,6 @@
-// Package helpers provides code snippets that are used across the code base.
+/*
+Package helpers provides code snippets that are used across the code base.
+*/
 package helpers
 
 import (
