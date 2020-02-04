@@ -1,9 +1,12 @@
-// Package leds enables control of LEDs through the Carbon I/O front-panel LEDs.
-//
-// The Avid Stage 16 LEDs are controlled through the kernel interface of the
-// spi device. The current state of the LED can be read by looking at the
-// contents of the file that represents the device interface. Changing the
-// state can be done by writing to the same interface.
+/*
+Package leds enables control of LEDs through the Carbon I/O front-panel LEDs.
+
+The Avid Stage 16 LEDs are controlled through the kernel interface of the spi
+device. The current state of the LED can be read by looking at the contents of
+the file that represents the device interface. Changing the state can be done by
+writing to the same interface.
+*/
+
 package leds
 
 import (
