@@ -1,14 +1,16 @@
 package devices
 
 import (
+	"fmt"
+
 	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/avid-s3l/carbonio/signals"
 )
 
 const (
-	numMicInputs   = 16
-	numLineOutputs = 8
-	numAESOutputs  = 2
+	stage16_micInputs   = 16
+	stage16_lineOutputs = 8
+	stage16_aesOutputs  = 2
 )
 
 type Stage16 struct {
@@ -39,11 +41,21 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	d.statusLED = leds.Status
 	d.muteLED = leds.Mute
 
-	s, err := signals.MicInputs(numMicInputs)
+	s, err := signals.MicInputs(stage16_micInputs)
 	if err != nil {
 		return nil, err
 	}
 	d.micInputs = s
 
 	return d, nil
+}
+
+// NumMicInputs implements Device.
+func (d *Stage16) NumMicInputs() uint { return stage16_micInputs }
+
+func (d *Stage16) MicInput(input uint) (*signals.Signal, error) {
+	if input < 1 || input > stage16_micInputs {
+		return nil, fmt.Errorf("invalid input number %d", input)
+	}
+	return d.micInputs[input], nil
 }

@@ -3,9 +3,18 @@ Package devices enables control of specific Avid S3L devices.
 */
 package devices
 
-import "net"
+import (
+	"net"
 
-type Device interface{}
+	"github.com/kward/avid-s3l/carbonio/signals"
+)
+
+type Device interface {
+	// NumMicInputs returns the number of microphone inputs for the device.
+	NumMicInputs() uint
+	// MicInput returns the signal struct for the request input number.
+	MicInput(input uint) (*signals.Signal, error)
+}
 
 type options struct {
 	mac  net.HardwareAddr
