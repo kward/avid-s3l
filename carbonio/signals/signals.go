@@ -49,6 +49,7 @@ type Signal struct {
 	opts *options
 	name string
 
+	gainSPI    string
 	padSPI     string
 	phantomSPI string
 }
@@ -79,6 +80,7 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		return nil, fmt.Errorf("unsupported signal direction %s", o.dir)
 	}
 
+	s.gainSPI = fmt.Sprintf("%s/%s_preamp_gain", chSPI, chPre)
 	s.padSPI = fmt.Sprintf("%s/%s_pad_en", chSPI, chPre)
 	s.phantomSPI = phantomSPI(o.num, o.maxNum)
 
@@ -89,7 +91,34 @@ func (s *Signal) Connector() Conn { return s.opts.conn }
 func (s *Signal) Format() Fmt     { return s.opts.fmt }
 func (s *Signal) Level() Lvl      { return s.opts.lvl }
 
-// Pad returns the state of the -20 dB pad.
+const gainOffset = 9 // Offset value between spi value and real dB gain.
+
+// Gain returns the current gain level in dB.
+//
+// The spi gain value is between 1-51, which represents a gain of 10-60 dB.
+func (s *Signal) Gain() (uint, error) {
+	u, err := readFileUint(s, s.gainSPI)
+	if err != nil {
+		return 0, err
+	}
+	if u < 1 || u > 51 {
+		return 0, fmt.Errorf("unsupported spi gain value %d", u)
+	}
+	return u + gainOffset, nil
+}
+
+// SetGain for the given signal.
+func (s *Signal) SetGain(gain uint) error {
+	if gain < 10 || gain > 60 {
+		return fmt.Errorf("unsupported gain value %d", gain)
+	}
+	if err := helpers.WriteFile(s.gainSPI, fmt.Sprintf("%d", gain-gainOffset)); err != nil {
+		return fmt.Errorf("error writing gain; %s", err)
+	}
+	return nil
+}
+
+// Pad returns the current state of the -20 dB pad.
 func (s *Signal) Pad() (bool, error) {
 	v, err := helpers.ReadByte(s.padSPI)
 	if err != nil {
@@ -101,7 +130,7 @@ func (s *Signal) Pad() (bool, error) {
 	case '1':
 		return true, nil
 	default:
-		return false, fmt.Errorf("unsupported pad value %d", v)
+		return false, fmt.Errorf("unsupported spi pad value %d", v)
 	}
 }
 
@@ -115,7 +144,7 @@ func (s *Signal) SetPad(pad bool) error {
 	return helpers.WriteByte(s.padSPI, byte(v))
 }
 
-// Phantom returns the state of the -48 V phantom.
+// Phantom returns the current state of the -48 V phantom.
 //
 // Phantom states are stored as 4 bit values of a byte, with the lowest signal
 // number in the highest bit. The byte itself is stored as a string.
@@ -125,9 +154,12 @@ func (s *Signal) SetPad(pad bool) error {
 // 3 = 2 (0b00000010)
 // 4 = 1 (0b00000001)
 func (s *Signal) Phantom() (bool, error) {
-	u, err := readPhantom(s)
+	u, err := readFileUint(s, s.phantomSPI)
 	if err != nil {
 		return false, err
+	}
+	if u > 0b00001111 { // The max value when all four agc phantoms are enabled.
+		return false, fmt.Errorf("unsupported spi phantom value %d (%08b)", u, u)
 	}
 
 	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
@@ -138,9 +170,12 @@ func (s *Signal) Phantom() (bool, error) {
 //
 // The phantom is controlled with the "spi4.0/adcX_phantom_en" interface.
 func (s *Signal) SetPhantom(phantom bool) error {
-	u, err := readPhantom(s)
+	u, err := readFileUint(s, s.phantomSPI)
 	if err != nil {
 		return err
+	}
+	if u > 0b00001111 { // The max value when all four agc phantoms are enabled.
+		return fmt.Errorf("unsupported spi phantom value %d (%08b)", u, u)
 	}
 
 	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
@@ -156,8 +191,8 @@ func (s *Signal) SetPhantom(phantom bool) error {
 	return nil
 }
 
-func readPhantom(s *Signal) (uint, error) {
-	data, err := helpers.ReadFileFn(s.phantomSPI)
+func readFileUint(s *Signal, filename string) (uint, error) {
+	data, err := helpers.ReadFileFn(filename)
 	if err != nil {
 		return 0, fmt.Errorf("error reading phantom; %s", err)
 	}
