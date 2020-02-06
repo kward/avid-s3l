@@ -75,20 +75,20 @@ func TestNewInput(t *testing.T) {
 
 func TestPad(t *testing.T) {
 	for _, tc := range []struct {
-		desc string
-		pad  bool
-		data []byte
-		ok   bool
+		desc      string
+		ok        bool
+		input     []byte
+		isEnabled bool
 	}{
 		// Supported states.
-		{"off", false, []byte{'0', '\n'}, true},
+		{"off", true, []byte{'0', '\n'}, false},
 		{"on", true, []byte{'1', '\n'}, true},
-		// TODO: The following are only really useful for ReadFile as the local
-		// WriteFile doesn't validate what should have been written.
-		{"unsupported", false, []byte{123, '\n'}, false},
-		{"readfile error", false, []byte{}, false},
+
+		// Error states.
+		{"unsupported data", false, []byte{0xff, '\n'}, false},
+		{"empty file", false, []byte{}, false},
 	} {
-		signal, err := New("Pad test",
+		signal, err := New("TestPad",
 			Number(1),
 			MaxNumber(16),
 			Direction(Input),
@@ -98,7 +98,7 @@ func TestPad(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("Pad() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.data, tc.ok)
+			prepareReadFile(tc.input, tc.ok)
 			got, err := signal.Pad()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -109,14 +109,39 @@ func TestPad(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if want := tc.pad; got != want {
+			if want := tc.isEnabled; got != want {
 				t.Errorf("= %t, want %t", got, want)
 			}
 		})
+	}
+}
+
+func TestSetPad(t *testing.T) {
+	for _, tc := range []struct {
+		desc   string
+		ok     bool
+		enable bool
+		output []byte
+	}{
+		// Supported states.
+		{"off", true, false, []byte{'0', '\n'}},
+		{"on", true, true, []byte{'1', '\n'}},
+
+		// Error states.
+		{desc: "writefile error", ok: false, enable: false},
+	} {
+		signal, err := New("TestSetPad",
+			Number(1),
+			MaxNumber(16),
+			Direction(Input),
+		)
+		if err != nil {
+			t.Fatalf("error setting up test; %s", err)
+		}
 
 		t.Run(fmt.Sprintf("SetPad() %s", tc.desc), func(t *testing.T) {
 			prepareWriteFile(tc.ok)
-			err := signal.SetPad(tc.pad)
+			err := signal.SetPad(tc.enable)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -126,7 +151,7 @@ func TestPad(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := wfData, tc.data; !operators.EqualSlicesOfByte(got, want) {
+			if got, want := wfData, tc.output; !operators.EqualSlicesOfByte(got, want) {
 				t.Errorf("expected %v to be written, not %v", want, got)
 			}
 		})
@@ -168,7 +193,7 @@ func TestPhantom(t *testing.T) {
 		{"unsupported data", false, 1, []byte{0xff, '\n'}, false},
 		{"empty file", false, 1, []byte{}, false},
 	} {
-		signal, err := New("Phantom test",
+		signal, err := New("TestPhantom",
 			Number(tc.num),
 			MaxNumber(16),
 			Direction(Input),
@@ -232,7 +257,7 @@ func TestSetPhantom(t *testing.T) {
 		{"unsupported data", false, 1, []byte{0xff, '\n'}, false, []byte{0, '\n'}},
 		{"empty file", false, 1, []byte{}, false, []byte{}},
 	} {
-		signal, err := New("Phantom test",
+		signal, err := New("TestSetPhantom",
 			Number(tc.num),
 			MaxNumber(16),
 			Direction(Input),
