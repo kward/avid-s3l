@@ -141,15 +141,29 @@ func TestPhantom(t *testing.T) {
 		input     []byte
 		isEnabled bool
 	}{
-		// Supported states.
-		{"1 on", true, 1, []byte{'8', '\n'}, true},
-		{"1 off", true, 1, []byte{'0', '\n'}, false},
-		{"2 on", true, 2, []byte{'4', '\n'}, true},
-		{"2 off", true, 2, []byte{'0', '\n'}, false},
-		{"15 on", true, 15, []byte{'2', '\n'}, true},
-		{"15 off", true, 15, []byte{'0', '\n'}, false},
-		{"16 on", true, 16, []byte{'1', '\n'}, true},
-		{"16 off", true, 16, []byte{'0', '\n'}, false},
+		// Supported states. "only" indicates that only that phantom is on/off, and
+		// "all" indicates that "all" phantoms for the `agc` device are in that state.
+
+		{"only 1 on", true, 1, []byte{'8', '\n'}, true},
+		{"only 1 off", true, 1, []byte{'7', '\n'}, false},
+		{"all on 1 on", true, 1, []byte{'1', '5', '\n'}, true},
+		{"all off 1 off", true, 1, []byte{'0', '\n'}, false},
+
+		{"only 2 on", true, 2, []byte{'4', '\n'}, true},
+		{"only 2 off", true, 2, []byte{'1', '1', '\n'}, false},
+		{"all on 2 on", true, 2, []byte{'1', '5', '\n'}, true},
+		{"all off 2 off", true, 2, []byte{'0', '\n'}, false},
+
+		{"only 15 on", true, 15, []byte{'2', '\n'}, true},
+		{"only 15 off", true, 15, []byte{'1', '3', '\n'}, false},
+		{"all on 15 on", true, 15, []byte{'1', '5', '\n'}, true},
+		{"all off 15 off", true, 15, []byte{'0', '\n'}, false},
+
+		{"only 16 on", true, 16, []byte{'1', '\n'}, true},
+		{"only 16 off", true, 16, []byte{'1', '4', '\n'}, false},
+		{"all on 16 on", true, 16, []byte{'1', '5', '\n'}, true},
+		{"all off 16 off", true, 16, []byte{'0', '\n'}, false},
+
 		// Error states.
 		{"unsupported data", false, 1, []byte{0xff, '\n'}, false},
 		{"empty file", false, 1, []byte{}, false},
@@ -191,8 +205,8 @@ func TestSetPhantom(t *testing.T) {
 		enable bool
 		output []byte
 	}{
-		// Supported states. "all" indicates that all four phantoms are enabled on the
-		// given `agc` device.
+		// Supported states. "none" or "all" indicate that none or all four phantoms
+		// are enabled on the given `agc` device.
 
 		{"none 1 on", true, 1, []byte{'0', '\n'}, true, []byte{'8', '\n'}},
 		{"none 1 off", true, 1, []byte{'0', '\n'}, false, []byte{'0', '\n'}},
@@ -213,8 +227,8 @@ func TestSetPhantom(t *testing.T) {
 		{"none 16 off", true, 16, []byte{'0', '\n'}, false, []byte{'0', '\n'}},
 		{"all 16 on", true, 16, []byte{'1', '5', '\n'}, true, []byte{'1', '5', '\n'}},
 		{"all 16 off", true, 16, []byte{'1', '5', '\n'}, false, []byte{'1', '4', '\n'}},
-		// TODO: The following are only really useful for ReadFile as the local
-		// WriteFile doesn't validate what should have been written.
+
+		// Error states.
 		{"unsupported data", false, 1, []byte{0xff, '\n'}, false, []byte{0, '\n'}},
 		{"empty file", false, 1, []byte{}, false, []byte{}},
 	} {
