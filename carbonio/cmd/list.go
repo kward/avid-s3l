@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/kward/avid-s3l/carbonio/devices"
+	"github.com/kward/tabulate/tabulate"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +29,8 @@ func list(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Println("SIGNAL GAIN PAD PHANTOM")
+	lines := []string{}
+	lines = append(lines, "SIGNAL GAIN PAD PHANTOM")
 	for i := uint(1); i <= d.NumMicInputs(); i++ {
 		in, err := d.MicInput(i)
 		if err != nil {
@@ -60,6 +62,15 @@ func list(cmd *cobra.Command, args []string) {
 			phantomStr = fmt.Sprintf("%t", phantom)
 		}
 
-		fmt.Printf("input/mic/%d %s %s %s\n", i, gainStr, padStr, phantomStr)
+		lines = append(lines, fmt.Sprintf("input/mic/%d %s %s %s", i, gainStr, padStr, phantomStr))
 	}
+	tbl, err := tabulate.NewTable()
+	if err != nil {
+		fmt.Printf("unable to list settings; %s", err)
+		return
+	}
+	tbl.Split(lines, " ", -1)
+	rndr := &tabulate.PlainRenderer{}
+	rndr.SetOFS(" ")
+	fmt.Println(rndr.Render(tbl))
 }
