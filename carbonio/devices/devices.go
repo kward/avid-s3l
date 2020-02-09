@@ -16,10 +16,14 @@ type Device interface {
 	MicInput(input uint) (*signals.Signal, error)
 }
 
+const SPIDevicesDir = "/sys/bus/spi/devices"
+
 type options struct {
 	mac  net.HardwareAddr
 	ip   net.IP
 	host string
+
+	spiBaseDir string
 }
 
 func Host(v string) func(*options) error {
@@ -43,5 +47,14 @@ func MAC(v net.HardwareAddr) func(*options) error {
 }
 func (o *options) setMAC(v net.HardwareAddr) error {
 	o.mac = v
+	return nil
+}
+
+// SPIBaseDir returns the path to the SPI devices directory.
+func SPIBaseDir(v string) func(*options) error {
+	return func(o *options) error { return o.setSPIBaseDir(v) }
+}
+func (o *options) setSPIBaseDir(v string) error {
+	o.spiBaseDir = v
 	return nil
 }

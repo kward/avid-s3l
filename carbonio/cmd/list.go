@@ -23,7 +23,7 @@ var listCmd = &cobra.Command{
 const ifs = " "
 
 func list(cmd *cobra.Command, args []string) {
-	d, err := devices.NewStage16()
+	d, err := devices.NewStage16(devices.SPIBaseDir(spiBaseDir))
 	if err != nil {
 		fmt.Printf("error configuring the Stage 16 device; %s\n", err)
 		os.Exit(1)
@@ -72,5 +72,5 @@ func list(cmd *cobra.Command, args []string) {
 	tbl.Split(lines, " ", -1)
 	rndr := &tabulate.PlainRenderer{}
 	rndr.SetOFS(" ")
-	fmt.Println(rndr.Render(tbl))
+	fmt.Printf("%s", rndr.Render(tbl))
 }

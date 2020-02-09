@@ -16,7 +16,7 @@ import (
 	"github.com/kward/avid-s3l/carbonio/helpers"
 )
 
-func MicInputs(numInputs uint) (Signals, error) {
+func MicInputs(spiBaseDir string, numInputs uint) (Signals, error) {
 	if numInputs == 0 {
 		return nil, fmt.Errorf("invalid number of inputs %d", numInputs)
 	}
@@ -26,6 +26,7 @@ func MicInputs(numInputs uint) (Signals, error) {
 	for i := uint(1); i <= numInputs; i++ {
 		s, err := New(
 			fmt.Sprintf("Mic input #%d", i),
+			SPIBaseDir(spiBaseDir),
 			Number(i),
 			MaxNumber(numInputs),
 			Direction(Input),
@@ -74,7 +75,7 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 	}
 	switch o.dir {
 	case Input:
-		chSPI = channelSPI(o.num, o.maxNum)
+		chSPI = channelSPI(o.spiBaseDir, o.num, o.maxNum)
 		chPre = channelPrefix(o.num, o.maxNum)
 	default:
 		return nil, fmt.Errorf("unsupported signal direction %s", o.dir)
@@ -82,7 +83,7 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 
 	s.gainSPI = fmt.Sprintf("%s/%s_preamp_gain", chSPI, chPre)
 	s.padSPI = fmt.Sprintf("%s/%s_pad_en", chSPI, chPre)
-	s.phantomSPI = phantomSPI(o.num, o.maxNum)
+	s.phantomSPI = phantomSPI(o.spiBaseDir, o.num, o.maxNum)
 
 	return s, nil
 }
@@ -212,12 +213,13 @@ func readFileUint(s *Signal, filename string) (uint, error) {
 // signal 1, or "spi1.2" for input signal 16).
 //
 // See also `channelPrefix()`.
-func channelSPI(num, maxNum uint) string {
-	const spi = "/sys/bus/spi/devices/spi1."
-
+func channelSPI(dir string, num, maxNum uint) string {
 	if num < 1 || num > maxNum {
 		return "unknown"
 	}
+
+	// SPI base + device, e.g., `/sys/bus/spi/devices/spi1.`.
+	spi := dir + "/spi1."
 
 	switch num {
 	case 1, 2, 3, 4:
@@ -254,12 +256,13 @@ func channelPrefix(num, maxNum uint) string {
 // with a adcX value (e.g., "adc1" for input #1, or "adc2" for input #16).
 //
 // See also `channelPrefix()`.
-func phantomSPI(num, maxNum uint) string {
-	const spi = "/sys/bus/spi/devices/spi4.0/"
-
+func phantomSPI(dir string, num, maxNum uint) string {
 	if num < 1 || num > maxNum {
 		return "unknown"
 	}
+
+	// SPI base + device, e.g., `/sys/bus/spi/devices/spi4.0`.
+	spi := dir + "/spi4.0"
 
 	switch num {
 	case 1, 2, 3, 4:
