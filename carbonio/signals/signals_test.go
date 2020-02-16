@@ -31,24 +31,24 @@ func TestNewInput(t *testing.T) {
 		// Valid inputs.
 		{"signal 1", true,
 			1, 16, Input,
-			"/sys/bus/spi/devices/spi1.1/ch0_preamp_gain",
-			"/sys/bus/spi/devices/spi1.1/ch0_pad_en",
-			"/sys/bus/spi/devices/spi4.0/adc1_phantom_en"},
+			"/spi/base/spi1.1/ch0_preamp_gain",
+			"/spi/base/spi1.1/ch0_pad_en",
+			"/spi/base/spi4.0/adc1_phantom_en"},
 		{"signal 2", true,
 			2, 16, Input,
-			"/sys/bus/spi/devices/spi1.1/ch1_preamp_gain",
-			"/sys/bus/spi/devices/spi1.1/ch1_pad_en",
-			"/sys/bus/spi/devices/spi4.0/adc1_phantom_en"},
+			"/spi/base/spi1.1/ch1_preamp_gain",
+			"/spi/base/spi1.1/ch1_pad_en",
+			"/spi/base/spi4.0/adc1_phantom_en"},
 		{"signal 15", true,
 			15, 16, Input,
-			"/sys/bus/spi/devices/spi1.2/ch2_preamp_gain",
-			"/sys/bus/spi/devices/spi1.2/ch2_pad_en",
-			"/sys/bus/spi/devices/spi4.0/adc2_phantom_en"},
+			"/spi/base/spi1.2/ch2_preamp_gain",
+			"/spi/base/spi1.2/ch2_pad_en",
+			"/spi/base/spi4.0/adc2_phantom_en"},
 		{"signal 16", true,
 			16, 16, Input,
-			"/sys/bus/spi/devices/spi1.2/ch3_preamp_gain",
-			"/sys/bus/spi/devices/spi1.2/ch3_pad_en",
-			"/sys/bus/spi/devices/spi4.0/adc2_phantom_en"},
+			"/spi/base/spi1.2/ch3_preamp_gain",
+			"/spi/base/spi1.2/ch3_pad_en",
+			"/spi/base/spi4.0/adc2_phantom_en"},
 
 		// Invalid inputs.
 		{desc: "Number out of range", num: 99, maxNum: 16, dir: Input},
@@ -56,6 +56,7 @@ func TestNewInput(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("New() %s", tc.desc), func(t *testing.T) {
 			s, err := New("Beep-ba-beep",
+				SPIBaseDir("/spi/base"),
 				Number(tc.num),
 				MaxNumber(tc.maxNum),
 				Direction(tc.dir),
@@ -68,6 +69,9 @@ func TestNewInput(t *testing.T) {
 			}
 			if !tc.ok {
 				return
+			}
+			if got, want := s.gainSPI, tc.gainSPI; got != want {
+				t.Errorf("gainSPI = %s, want %s", got, want)
 			}
 			if got, want := s.padSPI, tc.padSPI; got != want {
 				t.Errorf("padSPI = %s, want %s", got, want)
@@ -100,6 +104,7 @@ func TestGain(t *testing.T) {
 		{desc: "readfile error", readErr: fmt.Errorf("some error")},
 	} {
 		signal, err := New("TestGain",
+			SPIBaseDir("/spi/base"),
 			Number(1),
 			MaxNumber(16),
 			Direction(Input),
@@ -150,6 +155,7 @@ func TestSetGain(t *testing.T) {
 		{desc: "readfile error", writeErr: fmt.Errorf("some error")},
 	} {
 		signal, err := New("TestGain",
+			SPIBaseDir("/spi/base"),
 			Number(1),
 			MaxNumber(16),
 			Direction(Input),
@@ -195,6 +201,7 @@ func TestPad(t *testing.T) {
 		{desc: "readfile error", readErr: fmt.Errorf("ReadFile error")},
 	} {
 		signal, err := New("TestPad",
+			SPIBaseDir("/spi/base"),
 			Number(1),
 			MaxNumber(16),
 			Direction(Input),
@@ -238,6 +245,7 @@ func TestSetPad(t *testing.T) {
 		{desc: "writefile error", writeErr: fmt.Errorf("WriteFile error")},
 	} {
 		signal, err := New("TestSetPad",
+			SPIBaseDir("/spi/base"),
 			Number(1),
 			MaxNumber(16),
 			Direction(Input),
@@ -304,6 +312,7 @@ func TestPhantom(t *testing.T) {
 		{desc: "readfile error", num: 1, readErr: fmt.Errorf("ReadFile error")},
 	} {
 		signal, err := New("TestPhantom",
+			SPIBaseDir("/spi/base"),
 			Number(tc.num),
 			MaxNumber(16),
 			Direction(Input),
@@ -373,6 +382,7 @@ func TestSetPhantom(t *testing.T) {
 		{desc: "readfile error", num: 1, writeErr: fmt.Errorf("WriteFile error")},
 	} {
 		signal, err := New("TestSetPhantom",
+			SPIBaseDir("/spi/base"),
 			Number(tc.num),
 			MaxNumber(16),
 			Direction(Input),

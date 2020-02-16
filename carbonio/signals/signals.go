@@ -10,6 +10,7 @@ package signals
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -67,25 +68,13 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		return nil, err
 	}
 
-	var chSPI, chPre string
-
-	s := &Signal{
-		opts: o,
-		name: name,
-	}
-	switch o.dir {
-	case Input:
-		chSPI = channelSPI(o.spiBaseDir, o.num, o.maxNum)
-		chPre = channelPrefix(o.num, o.maxNum)
-	default:
-		return nil, fmt.Errorf("unsupported signal direction %s", o.dir)
-	}
-
-	s.gainSPI = fmt.Sprintf("%s/%s_preamp_gain", chSPI, chPre)
-	s.padSPI = fmt.Sprintf("%s/%s_pad_en", chSPI, chPre)
-	s.phantomSPI = phantomSPI(o.spiBaseDir, o.num, o.maxNum)
-
-	return s, nil
+	return &Signal{
+		opts:       o,
+		name:       name,
+		gainSPI:    path.Join(o.spiBaseDir, GainPath(o.num)),
+		padSPI:     path.Join(o.spiBaseDir, PadPath(o.num)),
+		phantomSPI: path.Join(o.spiBaseDir, PhantomPath(o.num)),
+	}, nil
 }
 
 func (s *Signal) Connector() Conn { return s.opts.conn }
@@ -119,6 +108,17 @@ func (s *Signal) SetGain(gain uint) error {
 	return nil
 }
 
+const (
+	PadEnabled  = true
+	PadDisabled = false
+)
+
+// GainPath returns the relative path to control gain for the given signal
+// number.
+func GainPath(num uint) string {
+	return path.Join(channelSPIDir(num), fmt.Sprintf("ch%d_preamp_gain", channelNum(num)))
+}
+
 // Pad returns the current state of the -20 dB pad.
 func (s *Signal) Pad() (bool, error) {
 	v, err := helpers.ReadByte(s.padSPI)
@@ -127,9 +127,9 @@ func (s *Signal) Pad() (bool, error) {
 	}
 	switch v {
 	case '0':
-		return false, nil
+		return PadDisabled, nil
 	case '1':
-		return true, nil
+		return PadEnabled, nil
 	default:
 		return false, fmt.Errorf("unsupported spi pad value %d", v)
 	}
@@ -138,11 +138,20 @@ func (s *Signal) Pad() (bool, error) {
 // SetPad for the given signal.
 // The pad is controlled with the "spi1.X/chX_pad_en" interface.
 func (s *Signal) SetPad(pad bool) error {
-	v := '0'
-	if pad {
+	var v byte
+	switch pad {
+	case PadEnabled:
 		v = '1'
+	case PadDisabled:
+		v = '0'
 	}
-	return helpers.WriteByte(s.padSPI, byte(v))
+	return helpers.WriteByte(s.padSPI, v)
+}
+
+// PadPath returns the relative path to control the pad for the given signal
+// number.
+func PadPath(num uint) string {
+	return path.Join(channelSPIDir(num), fmt.Sprintf("ch%d_pad_en", channelNum(num)))
 }
 
 // Phantom returns the current state of the -48 V phantom.
@@ -192,6 +201,30 @@ func (s *Signal) SetPhantom(phantom bool) error {
 	return nil
 }
 
+// PhantomPath maps the input number to the appropriate SPI device path.
+//
+// Input signals are controlled with individual files using the SPI device
+// interface. The inputs are spread across devices and phantoms are prefixed
+// with a adcX value (e.g., "adc1" for input #1, or "adc2" for input #16).
+//
+// See also `channelPrefix()`.
+func PhantomPath(num uint) string {
+	var spi string
+	switch num {
+	case 1, 2, 3, 4:
+		spi = "adc1_phantom_en"
+	case 5, 6, 7, 8:
+		spi = "adc0_phantom_en"
+	case 9, 10, 11, 12:
+		spi = "adc3_phantom_en"
+	case 13, 14, 15, 16:
+		spi = "adc2_phantom_en"
+	default:
+		return "unknown"
+	}
+	return path.Join("spi4.0", spi)
+}
+
 func readFileUint(s *Signal, filename string) (uint, error) {
 	data, err := helpers.ReadFileFn(filename)
 	if err != nil {
@@ -206,74 +239,35 @@ func readFileUint(s *Signal, filename string) (uint, error) {
 	return uint(u64), nil
 }
 
-// channeSPI maps the input number to the appropriate SPI device path.
+// channelSPI maps the input number to the appropriate SPI device path.
 //
 // Input signals are controlled with individual files using the SPI device
 // interface. The inputs are spread across devices (e.g., "spi1.1" for input
 // signal 1, or "spi1.2" for input signal 16).
 //
 // See also `channelPrefix()`.
-func channelSPI(dir string, num, maxNum uint) string {
-	if num < 1 || num > maxNum {
-		return "unknown"
-	}
-
-	// SPI base + device, e.g., `/sys/bus/spi/devices/spi1.`.
-	spi := dir + "/spi1."
-
+func channelSPIDir(num uint) string {
 	switch num {
 	case 1, 2, 3, 4:
-		return spi + "1"
+		return "spi1.1"
 	case 5, 6, 7, 8:
-		return spi + "0"
+		return "spi1.0"
 	case 9, 10, 11, 12:
-		return spi + "3"
+		return "spi1.3"
 	case 13, 14, 15, 16:
-		return spi + "2"
+		return "spi1.2"
 	default:
 		return "unknown"
 	}
 }
 
-// channelPrefix maps the input number to the appropriate channel prefix.
+// channelNum maps the input number to the appropriate channel number.
 //
 // Input signals are controlled with individual files using the SPI device
 // interface. The inputs are spread across devices and channels are prefixed
 // with a chX value (e.g., "ch0" for input #1, or "ch3" for input #16).
 //
-// See also `channelSPI()`.
-func channelPrefix(num, maxNum uint) string {
-	if num < 1 || num > maxNum {
-		return "unknown"
-	}
-	return fmt.Sprintf("ch%d", (num-1)%4)
-}
-
-// phantomSPI maps the input number to the appropriate SPI device path.
-//
-// Input signals are controlled with individual files using the SPI device
-// interface. The inputs are spread across devices and phantoms are prefixed
-// with a adcX value (e.g., "adc1" for input #1, or "adc2" for input #16).
-//
-// See also `channelPrefix()`.
-func phantomSPI(dir string, num, maxNum uint) string {
-	if num < 1 || num > maxNum {
-		return "unknown"
-	}
-
-	// SPI base + device, e.g., `/sys/bus/spi/devices/spi4.0`.
-	spi := dir + "/spi4.0"
-
-	switch num {
-	case 1, 2, 3, 4:
-		return spi + "adc1_phantom_en"
-	case 5, 6, 7, 8:
-		return spi + "adc0_phantom_en"
-	case 9, 10, 11, 12:
-		return spi + "adc3_phantom_en"
-	case 13, 14, 15, 16:
-		return spi + "adc2_phantom_en"
-	default:
-		return "unknown"
-	}
+// See also `channelSPIDir()`.
+func channelNum(num uint) uint {
+	return (num - 1) % 4
 }
