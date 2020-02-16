@@ -3,14 +3,18 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/spf13/cobra"
 )
 
 var (
+	dryRun     bool
 	spiBaseDir string
 	verbose    bool
+
+	device devices.Device
 
 	rootCmd = &cobra.Command{
 		Use:   "carbonio",
@@ -18,11 +22,14 @@ var (
 		Long: `carbonio provides direct control of the Avid Carbon I/O device, which is built
 into the E3 Engine and the Stage 16 stage boxes. Complete documentation is available at
 https://github.com/kward/avid-s3l`,
-		Run: root,
+		PersistentPreRun: persistentPreRun,
+		Run:              root,
 	}
 )
 
 func Execute() {
+	rootCmd.PersistentFlags().BoolVarP(
+		&dryRun, "dry_run", "n", false, "perform a dry-run")
 	rootCmd.PersistentFlags().BoolVarP(
 		&verbose, "verbose", "v", false, "verbose output")
 
@@ -30,25 +37,42 @@ func Execute() {
 		&spiBaseDir, "spi_base_dir", "", devices.SPIDevicesDir, "spi base directory")
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		exit(fmt.Sprintf("error: %v", err))
+	}
+}
+
+func persistentPreRun(cmd *cobra.Command, args []string) {
+	var err error
+
+	if cmd.HasParent() && cmd.Parent().Use != "internal" {
+		// Validate spi_base_dir.
+		err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			exit(fmt.Sprintf("error validating spi_base_dir: %v", err))
+		}
+	}
+
+	// Setup carbonio device.
+	device, err = devices.NewStage16(devices.SPIBaseDir(spiBaseDir))
+	if err != nil {
+		exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
 	}
 }
 
 func root(cmd *cobra.Command, args []string) {
 	fmt.Println("This is the carbonio controller.")
+	if device == nil {
+		fmt.Println("device is unitialized")
+		return
+	}
+}
 
-	// // LEDs.
-	// ls := []*leds.LED{leds.Power, leds.Status, leds.Mute}
-	// for _, l := range ls {
-	//  fmt.Println(l)
-	// }
-	// fmt.Println("Toggling LEDs…")
-	// for _, l := range ls {
-	//  l.SetState(leds.Off)
-	// }
-	// time.Sleep(2 * time.Second)
-	// for _, l := range ls {
-	//  l.SetState(leds.On)
-	// }
+func exit(msg string) {
+	fmt.Println(msg)
+	os.Exit(1)
 }
