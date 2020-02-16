@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/tabulate/tabulate"
 	"github.com/spf13/cobra"
 )
@@ -23,16 +21,14 @@ var listCmd = &cobra.Command{
 const ifs = " "
 
 func list(cmd *cobra.Command, args []string) {
-	d, err := devices.NewStage16(devices.SPIBaseDir(spiBaseDir))
-	if err != nil {
-		fmt.Printf("error configuring the Stage 16 device; %s\n", err)
-		os.Exit(1)
-	}
-
 	lines := []string{}
 	lines = append(lines, "SIGNAL GAIN PAD PHANTOM")
-	for i := uint(1); i <= d.NumMicInputs(); i++ {
-		in, err := d.MicInput(i)
+	if device == nil {
+		fmt.Println("device is uninitialized")
+		return
+	}
+	for i := uint(1); i <= device.NumMicInputs(); i++ {
+		in, err := device.MicInput(i)
 		if err != nil {
 			fmt.Printf("error accessing mic input %d; %s\n", i, err)
 			continue
