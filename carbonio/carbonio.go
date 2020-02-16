@@ -1,7 +1,7 @@
 // The carbionio command enables control of Carbon I/O hardware.
 //
 // Build for ARM with
-// $ GOOS=linux GOARM=7 GOARCH=arm go build carbonio.go
+// $ GOOS=linux GOARM=7 GOARCH=arm go build -o carbonio.arm7 carbonio.go
 package main
 
 import (
