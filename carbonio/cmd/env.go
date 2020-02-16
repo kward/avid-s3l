@@ -10,14 +10,12 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(envCmd)
-}
-
-var envCmd = &cobra.Command{
-	Use:   "env",
-	Short: "print carbonio environment information",
-	Long:  `Env prints the environment information of the carbonio executable.`,
-	Run:   env,
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "env",
+		Short: "print carbonio environment information",
+		Long:  `env prints the environment information of the carbonio executable.`,
+		Run:   env,
+	})
 }
 
 func env(cmd *cobra.Command, args []string) {
