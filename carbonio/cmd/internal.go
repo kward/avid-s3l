@@ -13,15 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	internalCmd := &cobra.Command{
+var (
+	internalCmd = &cobra.Command{
 		Use:    "internal",
 		Short:  "internal commands",
 		Long:   `internal commands that are used for testing.`,
 		Hidden: true,
 	}
-	rootCmd.AddCommand(internalCmd)
+)
 
+func init() {
+	rootCmd.AddCommand(internalCmd)
 	internalCmd.AddCommand(&cobra.Command{
 		Use:   "create_spi",
 		Short: "create_setup directory structure for testing",
