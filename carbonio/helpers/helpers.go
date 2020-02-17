@@ -7,13 +7,34 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/kward/golib/math"
 )
 
-const maxDataLen = 32
+func init() {
+	SetReadFileFn(ioutil.ReadFile)
+	SetWriteFileFn(ioutil.WriteFile)
+}
+
+// CommonLogFormat generates a log entry in the Common Log Format (CLF).
+//   "%h %l %u %t \"%r\" %>s %b"
+func CommonLogFormat(r *http.Request, status, length int) {
+	log.Printf("%s - - %s %q %d %d\n",
+		r.RemoteAddr, time.Now().Format("02/Jan/2006:15:04:05 -0700"), r.URL.Path, status, length)
+}
+
+func Exit(msg string) {
+	fmt.Println(msg)
+	os.Exit(1)
+}
+
+//-----------------------------------------------------------------------------
+// SPI helpers.
 
 var (
 	fileMode = os.FileMode(0644)
@@ -23,16 +44,13 @@ var (
 	writeFileFn writeFileType
 )
 
-func init() {
-	SetReadFileFn(ioutil.ReadFile)
-	SetWriteFileFn(ioutil.WriteFile)
-}
-
 type readFileType func(filename string) ([]byte, error)
 type writeFileType func(filename string, data []byte, perm os.FileMode) error
 
 func SetReadFileFn(fn readFileType)   { readFileFn = fn }
 func SetWriteFileFn(fn writeFileType) { writeFileFn = fn }
+
+const readByteMax = 32
 
 // ReadByte from the SPI interface.
 func ReadByte(filename string) (byte, error) {
@@ -41,7 +59,8 @@ func ReadByte(filename string) (byte, error) {
 		return 0, err
 	}
 	if len(data) != 2 || data[1] != '\n' {
-		return 0, fmt.Errorf("%q contains unexpected data; %v", filename, data[0:math.MinInt(len(data), maxDataLen)])
+		return 0, fmt.Errorf("%q contains unexpected data; %v",
+			filename, data[0:math.MinInt(len(data), readByteMax)])
 	}
 	return data[0], nil
 }

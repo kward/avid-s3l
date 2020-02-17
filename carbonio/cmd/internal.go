@@ -39,7 +39,7 @@ type data struct {
 
 func internal_create_spi(cmd *cobra.Command, args []string) {
 	if spiBaseDir == devices.SPIDevicesDir {
-		exit(fmt.Sprintf("refusing to overwrite core SPI dir %s", spiBaseDir))
+		helpers.Exit(fmt.Sprintf("refusing to overwrite core SPI dir %s", spiBaseDir))
 	}
 
 	tree := []data{}
@@ -49,7 +49,7 @@ func internal_create_spi(cmd *cobra.Command, args []string) {
 		leds.Verbose(verbose),
 	)
 	if err != nil {
-		exit(fmt.Sprintf("error instantiating leds; %s", err))
+		helpers.Exit(fmt.Sprintf("error instantiating leds; %s", err))
 	}
 	tree = append(tree, data{ls.Power().Path(), "0"})
 	tree = append(tree, data{ls.Status().Path(), "0"})
@@ -68,7 +68,7 @@ func internal_create_spi(cmd *cobra.Command, args []string) {
 		if !dryRun {
 			d := path.Dir(p)
 			if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
-				exit(fmt.Sprintf("error creating directory %s; %v", d, err))
+				helpers.Exit(fmt.Sprintf("error creating directory %s; %v", d, err))
 			}
 			helpers.WriteSPIFile(p, t.data)
 		}

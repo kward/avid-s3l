@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/kward/avid-s3l/carbonio/devices"
+	"github.com/kward/avid-s3l/carbonio/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +43,7 @@ func Execute() {
 		&spiBaseDir, "spi_base_dir", "", devices.SPIDevicesDir, "spi base directory")
 
 	if err := rootCmd.Execute(); err != nil {
-		exit(fmt.Sprintf("error: %v", err))
+		helpers.Exit(fmt.Sprintf("error: %v", err))
 	}
 }
 
@@ -58,7 +59,7 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 			return nil
 		})
 		if err != nil {
-			exit(fmt.Sprintf("error validating spi_base_dir: %v", err))
+			helpers.Exit(fmt.Sprintf("error validating spi_base_dir: %v", err))
 		}
 	}
 
@@ -69,7 +70,7 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 		devices.Verbose(verbose),
 	)
 	if err != nil {
-		exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
+		helpers.Exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
 	}
 }
 
@@ -79,9 +80,4 @@ func root(cmd *cobra.Command, args []string) {
 		fmt.Println("device is unitialized")
 		return
 	}
-}
-
-func exit(msg string) {
-	fmt.Println(msg)
-	os.Exit(1)
 }
