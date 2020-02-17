@@ -8,21 +8,35 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/kward/golib/math"
 )
 
 const maxDataLen = 32
 
-var fileMode = os.FileMode(0644)
+var (
+	fileMode = os.FileMode(0644)
+	// readFileFn holds a pointer to an ioutil.ReadFile compatible function.
+	readFileFn readFileType
+	// WriteFileFn holds a pointer to an ioutil.WriteFile compatible function.
+	writeFileFn writeFileType
+)
 
-// ReadFileFn holds a pointer to the ioutil.ReadFile function. This pointer can
-// be overridden for testing.
-var ReadFileFn = ioutil.ReadFile
+func init() {
+	SetReadFileFn(ioutil.ReadFile)
+	SetWriteFileFn(ioutil.WriteFile)
+}
+
+type readFileType func(filename string) ([]byte, error)
+type writeFileType func(filename string, data []byte, perm os.FileMode) error
+
+func SetReadFileFn(fn readFileType)   { readFileFn = fn }
+func SetWriteFileFn(fn writeFileType) { writeFileFn = fn }
 
 // ReadByte from the SPI interface.
 func ReadByte(filename string) (byte, error) {
-	data, err := ReadFileFn(filename)
+	data, err := readFileFn(filename)
 	if err != nil {
 		return 0, err
 	}
@@ -32,17 +46,22 @@ func ReadByte(filename string) (byte, error) {
 	return data[0], nil
 }
 
-// WriteFileFn holds a pointer to the ioutil.WriteFile function. This pointer
-// can be overridden for testing.
-var WriteFileFn = ioutil.WriteFile
+// ReadSPIFile reads data from the SPI interface, with newline stripped.
+func ReadSPIFile(filename string) (string, error) {
+	data, err := readFileFn(filename)
+	if err != nil {
+		return "", err
+	}
+	return strings.Split(fmt.Sprintf("%s", data), "\n")[0], nil
+}
 
 // WriteByte to the SPI interface.
 func WriteByte(filename string, v byte) error {
-	return WriteFileFn(filename, []byte{v, '\n'}, fileMode)
+	return writeFileFn(filename, []byte{v, '\n'}, fileMode)
 }
 
-// WriteFile to the SPI interface.
-func WriteFile(filename string, data string) error {
+// WriteSPIFile writes data to the SPI interface.
+func WriteSPIFile(filename string, data string) error {
 	buf := bytes.NewBuffer(nil)
 	_, err := buf.WriteString(data)
 	if err != nil {
@@ -52,5 +71,47 @@ func WriteFile(filename string, data string) error {
 	if err != nil {
 		return fmt.Errorf("error writing newline to buffer; %s", err)
 	}
-	return WriteFileFn(filename, buf.Bytes(), fileMode)
+	return writeFileFn(filename, buf.Bytes(), fileMode)
 }
+
+//-----------------------------------------------------------------------------
+// Helpers for testing.
+
+var (
+	rfData, wfData []byte
+	rfErr, wfErr   error
+)
+
+func PrepareReadFile(data []byte, err error) {
+	if err != nil {
+		rfErr = err
+		return
+	}
+	rfData = data
+	rfErr = nil
+}
+
+// MockReadFile matches the signature of io.ReadFile.
+func MockReadFile(filename string) ([]byte, error) {
+	return rfData, rfErr
+}
+
+func PrepareWriteFile(err error) {
+	if err != nil {
+		wfErr = err
+		return
+	}
+	wfErr = nil
+}
+
+// MockWriteFile matches the signature of io.WriteFile.
+func MockWriteFile(filename string, data []byte, mode os.FileMode) error {
+	if wfErr != nil {
+		wfData = []byte{}
+		return wfErr
+	}
+	wfData = data
+	return nil
+}
+
+func MockWriteData() []byte { return wfData }

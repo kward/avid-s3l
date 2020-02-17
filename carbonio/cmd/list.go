@@ -21,18 +21,11 @@ var (
 
 func init() {
 	rootCmd.AddCommand(listCmd)
-
 	listCmd.Flags().BoolVarP(&listRaw, "raw", "r", false, "raw output")
 }
 
-const (
-	ifs = " "
-	ofs = " "
-)
-
 func list(cmd *cobra.Command, args []string) {
-	lines := []string{}
-	lines = append(lines, "SIGNAL GAIN PAD PHANTOM")
+	lines := []string{"SIGNAL GAIN PAD PHANTOM"}
 
 	if device == nil {
 		fmt.Println("device is uninitialized")

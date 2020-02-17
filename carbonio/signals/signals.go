@@ -13,7 +13,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/kward/avid-s3l/carbonio/helpers"
 )
@@ -105,7 +104,7 @@ func (s *Signal) Gain() (uint, error) {
 
 // GainRaw returns the raw gain value.
 func (s *Signal) GainRaw() (string, error) {
-	v, err := readFile(s, s.gainSPI)
+	v, err := helpers.ReadSPIFile(s.gainSPI)
 	if err != nil {
 		return "", fmt.Errorf("error reading gain from %s; %s", s.gainSPI, err)
 	}
@@ -117,7 +116,7 @@ func (s *Signal) SetGain(gain uint) error {
 	if gain < 10 || gain > 60 {
 		return fmt.Errorf("unsupported gain value %d", gain)
 	}
-	if err := helpers.WriteFile(s.gainSPI, fmt.Sprintf("%d", gain-gainOffset)); err != nil {
+	if err := helpers.WriteSPIFile(s.gainSPI, fmt.Sprintf("%d", gain-gainOffset)); err != nil {
 		return fmt.Errorf("error writing gain; %s", err)
 	}
 	return nil
@@ -152,7 +151,7 @@ func (s *Signal) Pad() (bool, error) {
 
 // PadRaw returns the raw pad value.
 func (s *Signal) PadRaw() (string, error) {
-	v, err := readFile(s, s.padSPI)
+	v, err := helpers.ReadSPIFile(s.padSPI)
 	if err != nil {
 		return "", fmt.Errorf("error reading pad from %s; %s", s.padSPI, err)
 	}
@@ -202,7 +201,7 @@ func (s *Signal) Phantom() (bool, error) {
 
 // PhantomRaw returns the raw pad value.
 func (s *Signal) PhantomRaw() (string, error) {
-	v, err := readFile(s, s.phantomSPI)
+	v, err := helpers.ReadSPIFile(s.phantomSPI)
 	if err != nil {
 		return "", fmt.Errorf("error reading phantom from %s; %s", s.phantomSPI, err)
 	}
@@ -228,7 +227,7 @@ func (s *Signal) SetPhantom(phantom bool) error {
 		u = u & ^v
 	}
 
-	if err := helpers.WriteFile(s.phantomSPI, fmt.Sprintf("%d", u)); err != nil {
+	if err := helpers.WriteSPIFile(s.phantomSPI, fmt.Sprintf("%d", u)); err != nil {
 		return fmt.Errorf("error writing phantom; %s", err)
 	}
 	return nil
@@ -258,18 +257,9 @@ func PhantomPath(num uint) string {
 	return path.Join("spi4.0", spi)
 }
 
-// readFile returns a string representation of the file with newline stripped.
-func readFile(s *Signal, filename string) (string, error) {
-	data, err := helpers.ReadFileFn(filename)
-	if err != nil {
-		return "", err
-	}
-	return strings.Split(fmt.Sprintf("%s", data), "\n")[0], nil
-}
-
 // readFileUint returns a uint representation of the file.
 func readFileUint(s *Signal, filename string) (uint, error) {
-	data, err := readFile(s, filename)
+	data, err := helpers.ReadSPIFile(filename)
 	if err != nil {
 		return 0, err
 	}

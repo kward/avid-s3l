@@ -27,6 +27,11 @@ https://github.com/kward/avid-s3l`,
 	}
 )
 
+const (
+	ifs = " "
+	ofs = " "
+)
+
 func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry_run", "n", false, "perform a dry-run")

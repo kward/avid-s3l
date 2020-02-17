@@ -11,8 +11,8 @@ import (
 
 func TestMain(m *testing.M) {
 	// Override function pointers for testing.
-	helpers.ReadFileFn = readFile
-	helpers.WriteFileFn = writeFile
+	helpers.SetReadFileFn(helpers.MockReadFile)
+	helpers.SetWriteFileFn(helpers.MockWriteFile)
 
 	os.Exit(m.Run())
 }
@@ -114,7 +114,7 @@ func TestGain(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("Gain() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.input, tc.readErr)
+			helpers.PrepareReadFile(tc.input, tc.readErr)
 			got, err := signal.Gain()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -165,7 +165,7 @@ func TestSetGain(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("Gain() %s", tc.desc), func(t *testing.T) {
-			prepareWriteFile(tc.writeErr)
+			helpers.PrepareWriteFile(tc.writeErr)
 			err := signal.SetGain(tc.gain)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -176,7 +176,7 @@ func TestSetGain(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := wfData, tc.output; !operators.EqualSlicesOfByte(got, want) {
+			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
 				t.Errorf("expected %v to be written, not %v", want, got)
 			}
 		})
@@ -211,7 +211,7 @@ func TestPad(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("Pad() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.input, tc.readErr)
+			helpers.PrepareReadFile(tc.input, tc.readErr)
 			got, err := signal.Pad()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -255,7 +255,7 @@ func TestSetPad(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("SetPad() %s", tc.desc), func(t *testing.T) {
-			prepareWriteFile(tc.writeErr)
+			helpers.PrepareWriteFile(tc.writeErr)
 			err := signal.SetPad(tc.enable)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -266,7 +266,7 @@ func TestSetPad(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := wfData, tc.output; !operators.EqualSlicesOfByte(got, want) {
+			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
 				t.Errorf("expected %v to be written, not %v", want, got)
 			}
 		})
@@ -322,7 +322,7 @@ func TestPhantom(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("Phantom() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.input, tc.readErr)
+			helpers.PrepareReadFile(tc.input, tc.readErr)
 			got, err := signal.Phantom()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -392,8 +392,8 @@ func TestSetPhantom(t *testing.T) {
 		}
 
 		t.Run(fmt.Sprintf("SetPhantom() %s", tc.desc), func(t *testing.T) {
-			prepareReadFile(tc.input, tc.readErr)
-			prepareWriteFile(tc.writeErr)
+			helpers.PrepareReadFile(tc.input, tc.readErr)
+			helpers.PrepareWriteFile(tc.writeErr)
 			err := signal.SetPhantom(tc.enable)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
@@ -404,38 +404,9 @@ func TestSetPhantom(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := wfData, tc.output; !operators.EqualSlicesOfByte(got, want) {
+			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
 				t.Errorf("expected %v to be written, not %v", want, got)
 			}
 		})
 	}
-}
-
-var (
-	rfData, wfData []byte
-	rfErr, wfErr   error
-)
-
-func prepareReadFile(data []byte, err error) {
-	rfData = data
-	rfErr = err
-}
-
-// readFile matches the signature of io.ReadFile.
-func readFile(filename string) ([]byte, error) {
-	return rfData, rfErr
-}
-
-func prepareWriteFile(err error) {
-	wfErr = err
-}
-
-// writeFile matches the signature of io.WriteFile.
-func writeFile(filename string, data []byte, mode os.FileMode) error {
-	if wfErr != nil {
-		wfData = nil
-		return wfErr
-	}
-	wfData = data
-	return nil
 }

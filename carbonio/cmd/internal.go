@@ -8,6 +8,7 @@ import (
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/avid-s3l/carbonio/signals"
 	"github.com/spf13/cobra"
 )
@@ -40,21 +41,31 @@ func internal_create_spi(cmd *cobra.Command, args []string) {
 	}
 
 	tree := []data{}
+
+	ls, err := leds.New(leds.SPIBaseDir(spiBaseDir))
+	if err != nil {
+		exit(fmt.Sprintf("error instantiating leds; %s", err))
+	}
+	tree = append(tree, data{ls.Power().Path(), "0"})
+	tree = append(tree, data{ls.Status().Path(), "0"})
+	tree = append(tree, data{ls.Mute().Path(), "0"})
+
 	for i := uint(1); i <= device.NumMicInputs(); i++ {
-		tree = append(tree, data{path: signals.GainPath(i), data: "1"})
-		tree = append(tree, data{path: signals.PadPath(i), data: "0"})
-		tree = append(tree, data{path: signals.PhantomPath(i), data: "0"})
+		tree = append(tree, data{signals.GainPath(i), "1"})
+		tree = append(tree, data{signals.PadPath(i), "0"})
+		tree = append(tree, data{signals.PhantomPath(i), "0"})
 	}
 
+	fmt.Printf("spiBaseDir: %s\n", spiBaseDir)
 	for _, t := range tree {
-		fmt.Printf("spiBaseDir: %s path: %s data: %q\n", spiBaseDir, t.path, t.data)
+		fmt.Printf("path: %s data: %q\n", t.path, t.data)
 		p := filepath.Join(spiBaseDir, t.path)
 		if !dryRun {
 			d := path.Dir(p)
 			if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
 				exit(fmt.Sprintf("error creating directory %s; %v", d, err))
 			}
-			helpers.WriteFile(p, t.data)
+			helpers.WriteSPIFile(p, t.data)
 		}
 	}
 }

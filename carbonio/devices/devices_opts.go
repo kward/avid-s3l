@@ -1,6 +1,9 @@
 package devices
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 type options struct {
 	// Device options.
@@ -11,6 +14,13 @@ type options struct {
 	// Global flags.
 	spiBaseDir string
 	verbose    bool
+}
+
+func (o *options) validate() error {
+	if o.spiBaseDir == "" {
+		return fmt.Errorf("SPIBaseDir option missing")
+	}
+	return nil
 }
 
 func Host(v string) func(*options) error {

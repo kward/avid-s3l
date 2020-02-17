@@ -16,8 +16,8 @@ const (
 type Stage16 struct {
 	opts *options
 
-	powerLED, statusLED, muteLED *leds.LED
-	micInputs                    signals.Signals
+	leds      *leds.LEDs
+	micInputs signals.Signals
 }
 
 // Verify that the interface is implemented properly.
@@ -32,13 +32,17 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 			return nil, err
 		}
 	}
-
-	d := &Stage16{
-		opts:      o,
-		powerLED:  leds.Power,
-		statusLED: leds.Status,
-		muteLED:   leds.Mute,
+	if err := o.validate(); err != nil {
+		return nil, err
 	}
+
+	d := &Stage16{opts: o}
+
+	l, err := leds.New(leds.SPIBaseDir(o.spiBaseDir))
+	if err != nil {
+		return nil, err
+	}
+	d.leds = l
 
 	s, err := signals.MicInputs(o.spiBaseDir, o.verbose, stage16_numMicInputs)
 	if err != nil {
@@ -49,9 +53,13 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	return d, nil
 }
 
+// LEDs implements Device.
+func (d *Stage16) LEDs() *leds.LEDs { return d.leds }
+
 // NumMicInputs implements Device.
 func (d *Stage16) NumMicInputs() uint { return stage16_numMicInputs }
 
+// MicInput returns the signal for the specified input number.
 func (d *Stage16) MicInput(input uint) (*signals.Signal, error) {
 	if input < 1 || input > stage16_numMicInputs {
 		return nil, fmt.Errorf("invalid input number %d", input)
