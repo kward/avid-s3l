@@ -10,6 +10,7 @@ package signals
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -17,7 +18,7 @@ import (
 	"github.com/kward/avid-s3l/carbonio/helpers"
 )
 
-func MicInputs(spiBaseDir string, numInputs uint) (Signals, error) {
+func MicInputs(spiBaseDir string, verbose bool, numInputs uint) (Signals, error) {
 	if numInputs == 0 {
 		return nil, fmt.Errorf("invalid number of inputs %d", numInputs)
 	}
@@ -27,13 +28,14 @@ func MicInputs(spiBaseDir string, numInputs uint) (Signals, error) {
 	for i := uint(1); i <= numInputs; i++ {
 		s, err := New(
 			fmt.Sprintf("Mic input #%d", i),
-			SPIBaseDir(spiBaseDir),
-			Number(i),
 			MaxNumber(numInputs),
+			Number(i),
 			Direction(Input),
 			Connector(XLR),
 			Format(Analog),
 			Level(Mic),
+			SPIBaseDir(spiBaseDir),
+			Verbose(verbose),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating input %d; %s", i, err)
@@ -68,13 +70,17 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		return nil, err
 	}
 
-	return &Signal{
+	s := &Signal{
 		opts:       o,
 		name:       name,
 		gainSPI:    path.Join(o.spiBaseDir, GainPath(o.num)),
 		padSPI:     path.Join(o.spiBaseDir, PadPath(o.num)),
 		phantomSPI: path.Join(o.spiBaseDir, PhantomPath(o.num)),
-	}, nil
+	}
+	if o.verbose {
+		fmt.Fprintf(os.Stdout, "%v\n", s)
+	}
+	return s, nil
 }
 
 func (s *Signal) Connector() Conn { return s.opts.conn }
@@ -95,6 +101,15 @@ func (s *Signal) Gain() (uint, error) {
 		return 0, fmt.Errorf("unsupported spi gain value %d", u)
 	}
 	return u + gainOffset, nil
+}
+
+// GainRaw returns the raw gain value.
+func (s *Signal) GainRaw() (string, error) {
+	v, err := readFile(s, s.gainSPI)
+	if err != nil {
+		return "", fmt.Errorf("error reading gain from %s; %s", s.gainSPI, err)
+	}
+	return v, nil
 }
 
 // SetGain for the given signal.
@@ -133,6 +148,15 @@ func (s *Signal) Pad() (bool, error) {
 	default:
 		return false, fmt.Errorf("unsupported spi pad value %d", v)
 	}
+}
+
+// PadRaw returns the raw pad value.
+func (s *Signal) PadRaw() (string, error) {
+	v, err := readFile(s, s.padSPI)
+	if err != nil {
+		return "", fmt.Errorf("error reading pad from %s; %s", s.padSPI, err)
+	}
+	return v, nil
 }
 
 // SetPad for the given signal.
@@ -174,6 +198,15 @@ func (s *Signal) Phantom() (bool, error) {
 
 	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
 	return u&v > 0, nil
+}
+
+// PhantomRaw returns the raw pad value.
+func (s *Signal) PhantomRaw() (string, error) {
+	v, err := readFile(s, s.phantomSPI)
+	if err != nil {
+		return "", fmt.Errorf("error reading phantom from %s; %s", s.phantomSPI, err)
+	}
+	return v, nil
 }
 
 // SetPhantom for the given signal.
@@ -225,14 +258,23 @@ func PhantomPath(num uint) string {
 	return path.Join("spi4.0", spi)
 }
 
-func readFileUint(s *Signal, filename string) (uint, error) {
+// readFile returns a string representation of the file with newline stripped.
+func readFile(s *Signal, filename string) (string, error) {
 	data, err := helpers.ReadFileFn(filename)
 	if err != nil {
-		return 0, fmt.Errorf("error reading phantom; %s", err)
+		return "", err
+	}
+	return strings.Split(fmt.Sprintf("%s", data), "\n")[0], nil
+}
+
+// readFileUint returns a uint representation of the file.
+func readFileUint(s *Signal, filename string) (uint, error) {
+	data, err := readFile(s, filename)
+	if err != nil {
+		return 0, err
 	}
 	// Convert data (slice of bytes) to a uint.
-	str := strings.Split(fmt.Sprintf("%s", data), "\n")[0]
-	u64, err := strconv.ParseUint(str, 10, 32)
+	u64, err := strconv.ParseUint(data, 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("error converting %q to an int; %s", data, err)
 	}

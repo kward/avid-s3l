@@ -22,10 +22,10 @@ func init() {
 	rootCmd.AddCommand(internalCmd)
 
 	internalCmd.AddCommand(&cobra.Command{
-		Use:   "setup_spi",
-		Short: "setup spi directory structure for testing",
+		Use:   "create_spi",
+		Short: "create_setup directory structure for testing",
 		Long:  "Create a full spi directory structure for testing.",
-		Run:   internal_setup_spi,
+		Run:   internal_create_spi,
 	})
 }
 
@@ -34,17 +34,16 @@ type data struct {
 	data string
 }
 
-func internal_setup_spi(cmd *cobra.Command, args []string) {
+func internal_create_spi(cmd *cobra.Command, args []string) {
 	if spiBaseDir == devices.SPIDevicesDir {
 		exit(fmt.Sprintf("refusing to overwrite core SPI dir %s", spiBaseDir))
 	}
 
 	tree := []data{}
 	for i := uint(1); i <= device.NumMicInputs(); i++ {
-		tree = append(tree, data{
-			path: signals.PadPath(i),
-			data: "0",
-		})
+		tree = append(tree, data{path: signals.GainPath(i), data: "1"})
+		tree = append(tree, data{path: signals.PadPath(i), data: "0"})
+		tree = append(tree, data{path: signals.PhantomPath(i), data: "0"})
 	}
 
 	for _, t := range tree {

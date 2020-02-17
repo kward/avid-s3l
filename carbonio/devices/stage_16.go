@@ -40,7 +40,7 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 		muteLED:   leds.Mute,
 	}
 
-	s, err := signals.MicInputs(o.spiBaseDir, stage16_numMicInputs)
+	s, err := signals.MicInputs(o.spiBaseDir, o.verbose, stage16_numMicInputs)
 	if err != nil {
 		return nil, err
 	}

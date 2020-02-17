@@ -58,7 +58,11 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Setup carbonio device.
-	device, err = devices.NewStage16(devices.SPIBaseDir(spiBaseDir))
+	// Declaring with '=' to ensure global `device` is not overridden.
+	device, err = devices.NewStage16(
+		devices.SPIBaseDir(spiBaseDir),
+		devices.Verbose(verbose),
+	)
 	if err != nil {
 		exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
 	}

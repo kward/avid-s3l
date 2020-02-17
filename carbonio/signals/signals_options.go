@@ -3,15 +3,19 @@ package signals
 import "fmt"
 
 type options struct {
-	spiBaseDir string
-
-	num    uint // Signal number (1-based, i.e. 1 is the first signal number).
+	// Device options.
 	maxNum uint // Maximum number of signals of this type.
 
+	// Signal options.
+	num  uint // Signal number (1-based, i.e. 1 is the first signal number).
 	dir  Dir
 	conn Conn
 	fmt  Fmt
 	lvl  Lvl
+
+	// Global flags.
+	spiBaseDir string
+	verbose    bool
 }
 
 func (o *options) validate() error {
@@ -27,12 +31,12 @@ func (o *options) validate() error {
 	return nil
 }
 
-// SPIBaseDir returns the path to the SPI devices directory.
-func SPIBaseDir(v string) func(*options) error {
-	return func(o *options) error { return o.setSPIBaseDir(v) }
+// MaxNumber returns the maximum number of supported signals.
+func MaxNumber(v uint) func(*options) error {
+	return func(o *options) error { return o.setMaxNumber(v) }
 }
-func (o *options) setSPIBaseDir(v string) error {
-	o.spiBaseDir = v
+func (o *options) setMaxNumber(v uint) error {
+	o.maxNum = v
 	return nil
 }
 
@@ -42,15 +46,6 @@ func Number(v uint) func(*options) error {
 }
 func (o *options) setNumber(v uint) error {
 	o.num = v
-	return nil
-}
-
-// MaxNumber returns the maximum number of supported signals.
-func MaxNumber(v uint) func(*options) error {
-	return func(o *options) error { return o.setMaxNumber(v) }
-}
-func (o *options) setMaxNumber(v uint) error {
-	o.maxNum = v
 	return nil
 }
 
@@ -87,5 +82,23 @@ func Level(v Lvl) func(*options) error {
 }
 func (o *options) setLevel(v Lvl) error {
 	o.lvl = v
+	return nil
+}
+
+// SPIBaseDir returns the path to the SPI devices directory.
+func SPIBaseDir(v string) func(*options) error {
+	return func(o *options) error { return o.setSPIBaseDir(v) }
+}
+func (o *options) setSPIBaseDir(v string) error {
+	o.spiBaseDir = v
+	return nil
+}
+
+// Verbose returns the verbose output setting.
+func Verbose(v bool) func(*options) error {
+	return func(o *options) error { return o.setVerbose(v) }
+}
+func (o *options) setVerbose(v bool) error {
+	o.verbose = v
 	return nil
 }
