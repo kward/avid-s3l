@@ -77,7 +77,7 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		phantomSPI: path.Join(o.spiBaseDir, PhantomPath(o.num)),
 	}
 	if o.verbose {
-		fmt.Fprintf(os.Stdout, "%v\n", s)
+		fmt.Fprintf(os.Stderr, "%#v\n", s)
 	}
 	return s, nil
 }
