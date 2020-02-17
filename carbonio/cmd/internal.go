@@ -42,7 +42,10 @@ func internal_create_spi(cmd *cobra.Command, args []string) {
 
 	tree := []data{}
 
-	ls, err := leds.New(leds.SPIBaseDir(spiBaseDir))
+	ls, err := leds.New(
+		leds.SPIBaseDir(spiBaseDir),
+		leds.Verbose(verbose),
+	)
 	if err != nil {
 		exit(fmt.Sprintf("error instantiating leds; %s", err))
 	}

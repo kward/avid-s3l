@@ -38,7 +38,10 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 
 	d := &Stage16{opts: o}
 
-	l, err := leds.New(leds.SPIBaseDir(o.spiBaseDir))
+	l, err := leds.New(
+		leds.SPIBaseDir(o.spiBaseDir),
+		leds.Verbose(o.verbose),
+	)
 	if err != nil {
 		return nil, err
 	}

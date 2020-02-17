@@ -11,6 +11,7 @@ package leds
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/kward/avid-s3l/carbonio/helpers"
@@ -22,6 +23,7 @@ type byValue map[value]State
 
 // LED describes a Carbon I/O LED.
 type LED struct {
+	opts   *options
 	name   string
 	iface  string
 	spi    string
@@ -30,7 +32,6 @@ type LED struct {
 }
 
 type LEDs struct {
-	opts                *options
 	power, status, mute *LED
 }
 
@@ -40,6 +41,30 @@ func (l LEDs) Mute() *LED   { return l.mute }
 
 // New instantiates the
 func New(opts ...func(*options) error) (*LEDs, error) {
+	leds := &LEDs{new(LED), new(LED), new(LED)}
+
+	for _, led := range []struct {
+		led    **LED
+		name   string
+		iface  string
+		states byState
+	}{
+		{&leds.power, "Power", "spi4.0/status_led_1_en", byState{Off: '0', Alert: '1', On: '2', testState: 255}},
+		{&leds.status, "Status", "spi4.0/status_led_0_en", byState{Off: '0', Alert: '1', On: '2', testState: 255}},
+		{&leds.mute, "Mute", "spi4.0/mute_led_en", byState{Off: '0', On: '1', testState: 255}},
+	} {
+		l, err := NewLED(led.name, led.iface, led.states, opts...)
+		if err != nil {
+			return nil, err
+		}
+		*led.led = l
+	}
+
+	return leds, nil
+}
+
+// NewLED instantiates a new LED.
+func NewLED(name string, iface string, states byState, opts ...func(*options) error) (*LED, error) {
 	o := &options{}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
@@ -50,32 +75,21 @@ func New(opts ...func(*options) error) (*LEDs, error) {
 		return nil, err
 	}
 
-	return &LEDs{
-		power: NewLED("Power", o.spiBaseDir, "spi4.0/status_led_1_en",
-			byState{Off: '0', Alert: '1', On: '2', testState: 255},
-		),
-		status: NewLED("Status", o.spiBaseDir, "spi4.0/status_led_0_en",
-			byState{Off: '0', Alert: '1', On: '2', testState: 255},
-		),
-		mute: NewLED("Mute", o.spiBaseDir, "spi4.0/mute_led_en",
-			byState{Off: '0', On: '1', testState: 255},
-		),
-	}, nil
-}
-
-// NewLED instantiates a new LED.
-func NewLED(name string, spiBaseDir string, iface string, states byState) *LED {
 	led := &LED{
 		name:   name,
 		iface:  iface,
-		spi:    path.Join(spiBaseDir, iface),
+		spi:    path.Join(o.spiBaseDir, iface),
 		states: states,
 		values: byValue{},
+		opts:   o,
 	}
 	for k, v := range led.states {
 		led.values[v] = k
 	}
-	return led
+	if o.verbose {
+		fmt.Fprintf(os.Stderr, "%#v\n", led)
+	}
+	return led, nil
 }
 
 // State returns the active state of the LED.
@@ -84,6 +98,9 @@ func (l *LED) State() (State, error) {
 		return Unknown, fmt.Errorf("LED uninitialized")
 	}
 
+	if l.opts.verbose {
+		fmt.Printf("reading LED from %s\n", l.spi)
+	}
 	v, err := helpers.ReadByte(l.spi)
 	if err != nil {
 		return Unknown, err

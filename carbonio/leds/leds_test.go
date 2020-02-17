@@ -25,9 +25,13 @@ func TestLEDs(t *testing.T) {
 }
 
 func TestLED(t *testing.T) {
-	led := NewLED("Blinky", "/spi/base", "/path/to/blinky",
+	led, err := NewLED("Blinky", "/path/to/blinky",
 		byState{Off: '0', Alert: '1', On: '2', testState: 255},
+		SPIBaseDir("/spi/base"),
 	)
+	if err != nil {
+		t.Fatalf("unexpected error; %s", err)
+	}
 
 	for _, tc := range []struct {
 		desc  string
