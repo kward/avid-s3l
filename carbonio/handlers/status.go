@@ -22,6 +22,10 @@ type StatusHandler struct {
 var _ Handler = new(StatusHandler)
 
 func NewStatusHandler(device devices.Device) Handler {
+	if device == nil {
+		helpers.Exit(fmt.Sprintln("device is uninitialized"))
+	}
+
 	return &StatusHandler{device: device}
 }
 
@@ -47,42 +51,43 @@ var statusTmpl = `
 </html>
 `
 
-func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	lines := []string{"LED STATUS"}
-	var err error
-
-	if h.device == nil {
-		fmt.Println("device is uninitialized")
-		return
-	}
-
-	lines = append(lines, fmt.Sprintf("Power %s", h.device.LEDs().Power()))
-	lines = append(lines, fmt.Sprintf("Status %s", h.device.LEDs().Status()))
-	lines = append(lines, fmt.Sprintf("Mute %s", h.device.LEDs().Mute()))
-
-	tbl, err := tabulate.NewTable()
+func (h *StatusHandler) ServeCommand(w io.Writer) {
+	str, err := h.status()
 	if err != nil {
-		fmt.Printf("unable to determine status; %s", err)
-		return
+		helpers.Exit(fmt.Sprintf("error gathering status; %s", err))
 	}
-	tbl.Split(lines, ifs, -1)
-	rndr := &tabulate.PlainRenderer{}
-	rndr.SetOFS(ofs)
 
-	data := struct {
-		Title  string
-		Status string
-	}{
-		Title:  "Status",
-		Status: rndr.Render(tbl),
+	_, err = io.WriteString(w, str)
+	if err != nil {
+		helpers.Exit(fmt.Sprintf("error writing status; %s", err))
 	}
-	buf := &bytes.Buffer{}
+}
+
+func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := http.StatusOK
-	err = htmlTmpls["status"].Execute(io.Writer(buf), data)
+	buf := &bytes.Buffer{}
+
+	str, err := h.status()
 	if err != nil {
 		status = http.StatusInternalServerError
 		w.WriteHeader(status)
 		log.Printf("error executing template; %s", err)
+	}
+
+	if status == http.StatusOK {
+		data := struct {
+			Title  string
+			Status string
+		}{
+			Title:  "Status",
+			Status: str,
+		}
+		err = htmlTmpls["status"].Execute(io.Writer(buf), data)
+		if err != nil {
+			status = http.StatusInternalServerError
+			w.WriteHeader(status)
+			log.Printf("error executing template; %s", err)
+		}
 	}
 
 	l := 0
@@ -93,7 +98,27 @@ func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 		}
 	}
+
 	helpers.CommonLogFormat(r, status, l)
 }
 
 func (h *StatusHandler) Name() string { return "status" }
+
+func (h *StatusHandler) status() (string, error) {
+	lines := []string{"LED STATUS"}
+	var err error
+
+	lines = append(lines, fmt.Sprintf("Power %s", h.device.LEDs().Power()))
+	lines = append(lines, fmt.Sprintf("Status %s", h.device.LEDs().Status()))
+	lines = append(lines, fmt.Sprintf("Mute %s", h.device.LEDs().Mute()))
+
+	tbl, err := tabulate.NewTable()
+	if err != nil {
+		return "", fmt.Errorf("failure creating table; %s", err)
+	}
+	tbl.Split(lines, ifs, -1)
+	rndr := &tabulate.PlainRenderer{}
+	rndr.SetOFS(ofs)
+
+	return rndr.Render(tbl), nil
+}

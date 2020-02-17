@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/kward/tabulate/tabulate"
+	"github.com/kward/avid-s3l/carbonio/handlers"
 	"github.com/spf13/cobra"
 )
 
@@ -24,24 +22,6 @@ func init() {
 }
 
 func status(cmd *cobra.Command, args []string) {
-	lines := []string{"LED STATUS"}
-
-	if device == nil {
-		fmt.Println("device is uninitialized")
-		return
-	}
-
-	lines = append(lines, fmt.Sprintf("Power %s", device.LEDs().Power()))
-	lines = append(lines, fmt.Sprintf("Status %s", device.LEDs().Status()))
-	lines = append(lines, fmt.Sprintf("Mute %s", device.LEDs().Mute()))
-
-	tbl, err := tabulate.NewTable()
-	if err != nil {
-		fmt.Printf("unable to determine status; %s", err)
-		return
-	}
-	tbl.Split(lines, ifs, -1)
-	rndr := &tabulate.PlainRenderer{}
-	rndr.SetOFS(ofs)
-	fmt.Printf("%s", rndr.Render(tbl))
+	h := handlers.NewStatusHandler(device)
+	h.ServeCommand(cmd.OutOrStdout())
 }
