@@ -26,6 +26,7 @@ func HttpServer(port int, dev devices.Device) {
 	statusHandler := handlers.NewStatusHandler(device)
 	http.Handle("/status", statusHandler)
 
+	fmt.Println("carbonio server starting")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
