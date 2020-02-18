@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -28,28 +27,6 @@ func NewStatusHandler(device devices.Device) Handler {
 
 	return &StatusHandler{device: device}
 }
-
-func init() {
-	tmpl, err := template.New("status").Parse(statusTmpl)
-	if err != nil {
-		helpers.Exit(fmt.Sprintf("error parsing status template; %s", err))
-	}
-	htmlTmpls["status"] = tmpl
-}
-
-var statusTmpl = `
-<html>
-<head>
-<title>{{.Title}}</title>
-</head>
-
-<body>
-<pre>
-{{.Status}}
-</pre>
-</body>
-</html>
-`
 
 func (h *StatusHandler) ServeCommand(w io.Writer) {
 	str, err := h.status()
@@ -82,7 +59,7 @@ func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Title:  "Status",
 			Status: str,
 		}
-		err = htmlTmpls["status"].Execute(io.Writer(buf), data)
+		err = tmpls["html/status.tmpl"].Execute(io.Writer(buf), data)
 		if err != nil {
 			status = http.StatusInternalServerError
 			w.WriteHeader(status)
