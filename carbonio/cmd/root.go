@@ -39,6 +39,8 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&verbose, "verbose", "v", false, "verbose output")
 
+	// TODO(2020-02-18) If this flag is overridden, validate a "version" file to
+	// ensure the structure is appropriate for testing.
 	rootCmd.PersistentFlags().StringVarP(
 		&spiBaseDir, "spi_base_dir", "", devices.SPIDevicesDir, "spi base directory")
 
@@ -50,17 +52,19 @@ func Execute() {
 func persistentPreRun(cmd *cobra.Command, args []string) {
 	var err error
 
-	if cmd.HasParent() && cmd.Parent().Use != "internal" {
-		// Validate spi_base_dir.
-		err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+	if cmd.Use == "help" || cmd.Use == "help [command]" {
+		return
+	}
+
+	// Validate spi_base_dir.
+	err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			helpers.Exit(fmt.Sprintf("error validating spi_base_dir: %v", err))
+			return err
 		}
+		return nil
+	})
+	if err != nil {
+		helpers.Exit(fmt.Sprintf("invalid --spi_base_dir flag value %s", spiBaseDir))
 	}
 
 	// Setup carbonio device.
