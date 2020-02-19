@@ -9,12 +9,22 @@ Control (OSC).
 To set up your environment for development or testing, see the
 [Environment setup](#env_setup) section below.
 
-### Local spi_base_dir
+### Local SPI devices directory
 
-Run the binary.
+Create a local SPI device structure.
 
 ```shell
-$ go run carbonio.go
+$ go run carbonio.go --spi_base_dir /tmp/spi internal create_spi
+```
+
+### Run the binary
+
+```shell
+$ go run carbonio.go --spi_base_dir /tmp/spi status
+LED    STATUS
+Power  Off
+Status Off
+Mute   Off
 ```
 
 ### bindata
