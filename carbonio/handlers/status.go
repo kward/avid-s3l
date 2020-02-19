@@ -12,31 +12,49 @@ import (
 	"github.com/kward/tabulate/tabulate"
 )
 
-// Status implements a handler for status requests.
+const statusTmpl = "html/status.tmpl"
+
+func init() {
+	register(&StatusHandler{})
+	mustTemplate(statusTmpl)
+}
+
+// StatusHandler implements a handler for status requests.
 type StatusHandler struct {
+	opts   *options
 	device devices.Device
 }
 
-// Ensure the Handler interface is implemented.
-var _ Handler = new(StatusHandler)
-
-func NewStatusHandler(device devices.Device) Handler {
+func NewStatusHandler(device devices.Device, opts ...func(*options) error) Handler {
 	if device == nil {
 		helpers.Exit(fmt.Sprintln("device is uninitialized"))
 	}
 
-	return &StatusHandler{device: device}
+	o := &options{}
+	for _, opt := range opts {
+		if err := opt(o); err != nil {
+			helpers.Exit(fmt.Sprintf("invalid option; %s", err))
+		}
+	}
+	if err := o.validate(); err != nil {
+		helpers.Exit(fmt.Sprintf("failed to validate options"))
+	}
+
+	return &StatusHandler{
+		opts:   o,
+		device: device,
+	}
 }
 
 func (h *StatusHandler) ServeCommand(w io.Writer) {
 	str, err := h.status()
 	if err != nil {
-		helpers.Exit(fmt.Sprintf("error gathering status; %s", err))
+		helpers.Exit(fmt.Sprintf("error gathering status information; %s", err))
 	}
 
 	_, err = io.WriteString(w, str)
 	if err != nil {
-		helpers.Exit(fmt.Sprintf("error writing status; %s", err))
+		helpers.Exit(fmt.Sprintf("error writing status information; %s", err))
 	}
 }
 
@@ -48,18 +66,18 @@ func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status = http.StatusInternalServerError
 		w.WriteHeader(status)
-		log.Printf("error executing template; %s", err)
+		log.Printf("%s", err)
 	}
 
 	if status == http.StatusOK {
 		data := struct {
-			Title  string
-			Status string
+			Title    string
+			Contents string
 		}{
-			Title:  "Status",
-			Status: str,
+			Title:    "Status",
+			Contents: str,
 		}
-		err = tmpls["html/status.tmpl"].Execute(io.Writer(buf), data)
+		err = tmpls[statusTmpl].Execute(io.Writer(buf), data)
 		if err != nil {
 			status = http.StatusInternalServerError
 			w.WriteHeader(status)
@@ -83,8 +101,6 @@ func (h *StatusHandler) Name() string { return "status" }
 
 func (h *StatusHandler) status() (string, error) {
 	lines := []string{"LED STATUS"}
-	var err error
-
 	lines = append(lines, fmt.Sprintf("Power %s", h.device.LEDs().Power()))
 	lines = append(lines, fmt.Sprintf("Status %s", h.device.LEDs().Status()))
 	lines = append(lines, fmt.Sprintf("Mute %s", h.device.LEDs().Mute()))

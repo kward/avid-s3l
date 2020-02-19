@@ -24,8 +24,8 @@ bindata (https://github.com/go-bindata/go-bindata) is used to bind binary data
 self-contained.
 
 ```shell
-$ go-bindata -o static/bindata.go -pkg static --ignore=\\.go$ -fs -prefix="${PWD}/static" static/
-$ go-bindata -o templates/bindata.go -pkg templates -ignore=\\.go$ -prefix="${PWD}/templates" templates/...
+$ go-bindata -debug -o static/bindata.go -pkg static --ignore=\\.go$ -fs -prefix="${PWD}/static" static/
+$ go-bindata -debug -o templates/bindata.go -pkg templates -ignore=\\.go$ -prefix="${PWD}/templates" templates/...
 ```
 
 ## Building the binary
@@ -33,7 +33,8 @@ $ go-bindata -o templates/bindata.go -pkg templates -ignore=\\.go$ -prefix="${PW
 ### Update helpers/bindata.go
 
 ```shell
-$ go-bindata -o helpers/bindata.go -pkg helpers -fs -prefix "static/" static/ templates/
+$ go-bindata -o static/bindata.go -pkg static --ignore=\\.go$ -fs -prefix="${PWD}/static" static/
+$ go-bindata -o templates/bindata.go -pkg templates -ignore=\\.go$ -prefix="${PWD}/templates" templates/...
 ```
 
 ### Compile
