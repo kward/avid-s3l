@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/kward/avid-s3l/carbonio/handlers"
+	"github.com/kward/avid-s3l/carbonio/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +25,10 @@ func init() {
 }
 
 func list(cmd *cobra.Command, args []string) {
-	h := handlers.NewListHandler(device, handlers.Raw(listRaw))
-	h.ServeCommand(cmd.OutOrStdout())
+	h, err := handlers.NewHandlers(device,
+		handlers.Raw(listRaw))
+	if err != nil {
+		helpers.Exit(fmt.Sprintf("error instantiating handlers; %s", err))
+	}
+	h.ListCommand(cmd.OutOrStdout())
 }

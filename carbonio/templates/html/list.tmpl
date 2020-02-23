@@ -1,11 +1,23 @@
 <html>
 <head>
-<title>{{.Title}}</title>
+	<script type="text/javascript"src="http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<title>{{.Title}}</title>
 </head>
 
 <body>
-<pre>
-{{.Contents}}
-</pre>
+	<h2>List updates every 3 sec</h2>
+	<pre><div id="output"></div></pre>
+	<script type="text/javascript">
+    $(document).ready(function () {
+      setInterval("delayedPost()", 3 * 1000);
+      delayedPost();
+    });
+    function delayedPost() {
+      $.post("http://{{.Host}}:{{.Port}}/list_query", "", function(data, status) {
+      $("#output").empty();
+      $("#output").append(data);
+      });
+    }
+  </script>
 </body>
 </html>

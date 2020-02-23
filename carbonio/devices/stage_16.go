@@ -2,6 +2,7 @@ package devices
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/avid-s3l/carbonio/signals"
@@ -26,6 +27,9 @@ var _ Device = new(Stage16)
 // NewStage16 returns a populated Stage16 struct.
 func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	o := &options{}
+	if err := setDeviceOptions(o); err != nil {
+		return nil, err
+	}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
 			return nil, err
@@ -73,3 +77,5 @@ func (d *Stage16) MicInput(input int) (*signals.Signal, error) {
 	}
 	return d.micInputs[input], nil
 }
+
+func (d *Stage16) IP() net.IP { return d.opts.ip }

@@ -1,11 +1,25 @@
 package handlers
 
+import "fmt"
+
 type options struct {
 	// Local flags.
-	raw bool
+	port int
+	raw  bool
 }
 
 func (o *options) validate() error {
+	if o.port == 0 {
+		return fmt.Errorf("port option missing")
+	}
+	return nil
+}
+
+func Port(v int) func(*options) error {
+	return func(o *options) error { return o.setPort(v) }
+}
+func (o *options) setPort(v int) error {
+	o.port = v
 	return nil
 }
 

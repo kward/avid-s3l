@@ -10,20 +10,36 @@ package handlers
 import (
 	"fmt"
 	"html/template"
-	"io"
-	"net/http"
 
+	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
 	"github.com/kward/avid-s3l/carbonio/templates"
 )
 
-type Handler interface {
-	http.Handler
+type Handlers struct {
+	opts   *options
+	device devices.Device
+}
 
-	// ServeCommand handles a command request.
-	ServeCommand(w io.Writer)
-	// Name of the handler.
-	Name() string
+func NewHandlers(device devices.Device, opts ...func(*options) error) (*Handlers, error) {
+	if device == nil {
+		return nil, fmt.Errorf("device is uninitialized")
+	}
+
+	o := &options{}
+	for _, opt := range opts {
+		if err := opt(o); err != nil {
+			return nil, fmt.Errorf("invalid option; %s", err)
+		}
+	}
+	if err := o.validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate options; %s", err)
+	}
+
+	return &Handlers{
+		opts:   o,
+		device: device,
+	}, nil
 }
 
 const (
@@ -33,9 +49,6 @@ const (
 
 // tmpls holds all parsed templates.
 var tmpls = map[string]*template.Template{}
-
-// hndlrs holds all known handlers.
-var hndlrs = []Handler{}
 
 func init() {
 	// Load and parse HTML templates.
@@ -48,13 +61,6 @@ func init() {
 			helpers.Exit(fmt.Sprintf("%s", err))
 		}
 	}
-}
-
-// register a handler.
-//
-// The act of registering validates that the Handler interface is met.
-func register(h Handler) {
-	hndlrs = append(hndlrs, h)
 }
 
 // loadAndParse template from the bindata asset and store in the package global

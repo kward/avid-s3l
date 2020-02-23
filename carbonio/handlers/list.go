@@ -5,51 +5,24 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
-	"github.com/kward/avid-s3l/carbonio/signals"
 	"github.com/kward/tabulate/tabulate"
 )
 
 const listTmpl = "html/list.tmpl"
 
 func init() {
-	register(&ListHandler{})
 	mustTemplate(listTmpl)
 }
 
-// ListHandler implements a handler for status requests.
-type ListHandler struct {
-	opts   *options
-	device devices.Device
-}
-
-func NewListHandler(device devices.Device, opts ...func(*options) error) Handler {
-	if device == nil {
-		helpers.Exit(fmt.Sprintln("device is uninitialized"))
-	}
-
-	o := &options{}
-	for _, opt := range opts {
-		if err := opt(o); err != nil {
-			helpers.Exit(fmt.Sprintf("invalid option; %s", err))
-		}
-	}
-	if err := o.validate(); err != nil {
-		helpers.Exit(fmt.Sprintf("failed to validate options"))
-	}
-
-	return &ListHandler{
-		opts:   o,
-		device: device,
-	}
-}
-
-func (h *ListHandler) ServeCommand(w io.Writer) {
-	str, err := h.list()
+func (h *Handlers) ListCommand(w io.Writer) {
+	str, err := list(h.device, h.opts.raw)
 	if err != nil {
+		// TODO(2020-02-23) Add an error to `h` instead of exiting here.
 		helpers.Exit(fmt.Sprintf("error gathering list information; %s", err))
 	}
 
@@ -59,61 +32,110 @@ func (h *ListHandler) ServeCommand(w io.Writer) {
 	}
 }
 
-func (h *ListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	status := http.StatusOK
+func (h *Handlers) ListHandler(w http.ResponseWriter, r *http.Request) {
 	buf := &bytes.Buffer{}
+	stts := http.StatusOK
 
-	str, err := h.list()
+	str, err := list(h.device, h.opts.raw)
 	if err != nil {
-		status = http.StatusInternalServerError
-		w.WriteHeader(status)
+		stts = http.StatusInternalServerError
+		w.WriteHeader(stts)
 		log.Printf("%s", err)
 	}
 
-	if status == http.StatusOK {
+	if stts == http.StatusOK {
 		data := struct {
 			Title    string
+			Host     net.IP
+			Port     int
 			Contents string
 		}{
 			Title:    "List",
+			Host:     h.device.IP(),
+			Port:     h.opts.port,
 			Contents: str,
 		}
 		err = tmpls[listTmpl].Execute(io.Writer(buf), data)
 		if err != nil {
-			status = http.StatusInternalServerError
-			w.WriteHeader(status)
+			stts = http.StatusInternalServerError
+			w.WriteHeader(stts)
 			log.Printf("error executing template; %s", err)
 		}
 	}
 
 	l := 0
-	if status == http.StatusOK {
+	if stts == http.StatusOK {
 		l, err = w.Write(buf.Bytes())
 		if err != nil {
-			status = http.StatusInternalServerError
-			w.WriteHeader(status)
+			stts = http.StatusInternalServerError
+			w.WriteHeader(stts)
 		}
 	}
 
-	helpers.CommonLogFormat(r, status, l)
+	helpers.CommonLogFormat(r, stts, l)
 }
 
-func (h *ListHandler) Name() string { return "list" }
+func (h *Handlers) ListQueryHandler(w http.ResponseWriter, r *http.Request) {
+	buf := &bytes.Buffer{}
+	stts := http.StatusOK
 
-func (h *ListHandler) list() (string, error) {
+	page, err := list(h.device, h.opts.raw)
+	if err != nil {
+		stts = http.StatusInternalServerError
+		w.WriteHeader(stts)
+		log.Printf("%s", err)
+	}
+
+	if stts == http.StatusOK {
+		buf.WriteString(page)
+	}
+
+	l := 0
+	if stts == http.StatusOK {
+		l, err = w.Write(buf.Bytes())
+		if err != nil {
+			stts = http.StatusInternalServerError
+			w.WriteHeader(stts)
+		}
+	}
+
+	helpers.CommonLogFormat(r, stts, l)
+}
+
+var boolToStr = map[bool]string{
+	true:  "On",
+	false: "Off",
+}
+
+func list(device devices.Device, asRaw bool) (string, error) {
 	lines := []string{"SIGNAL GAIN PAD PHANTOM"}
 
-	for i := 1; i <= h.device.NumMicInputs(); i++ {
-		in, err := h.device.MicInput(i)
+	for i := 1; i <= device.NumMicInputs(); i++ {
+		s, err := device.MicInput(i)
 		if err != nil {
-			log.Printf("error accessing mic input %d; %s\n", i, err)
+			log.Printf("error accessing mic input %d; %s", i, err)
 			continue
 		}
 
-		gainStr := gain(h.opts, in)
-		padStr := pad(h.opts, in)
-		phantomStr := phantom(h.opts, in)
-		lines = append(lines, fmt.Sprintf("input/mic/%d %s %s %s", i, gainStr, padStr, phantomStr))
+		if asRaw {
+			lines = append(lines, fmt.Sprintf("input/mic/%d %q %q %q", i,
+				s.Gain().Raw(), s.Pad().Raw(), s.Phantom().Raw()))
+			continue
+		}
+		gain, err := s.Gain().Value()
+		if err != nil {
+			log.Printf("error reading mic input %d gain; %s", i, err)
+		}
+		pad, err := s.Pad().IsEnabled()
+		if err != nil {
+			log.Printf("error read mic input %d pad; %s", i, err)
+		}
+		phantom, err := s.Phantom().IsEnabled()
+		if err != nil {
+			log.Printf("error read mic input %d phantom; %s", i, err)
+		}
+		lines = append(lines, fmt.Sprintf("input/mic/%d %d %s %s", i,
+			gain, boolToStr[pad], boolToStr[phantom]))
 	}
 
 	tbl, err := tabulate.NewTable()
@@ -125,42 +147,4 @@ func (h *ListHandler) list() (string, error) {
 	rndr.SetOFS(ofs)
 
 	return rndr.Render(tbl), nil
-}
-
-func gain(opts *options, s *signals.Signal) string {
-	if opts.raw {
-		return string(s.Gain().Raw())
-	}
-	v, err := s.Gain().Value()
-	if err != nil {
-		return "err"
-	}
-	return fmt.Sprintf("%d", v) // TODO(2020-02-17): include dB unit.
-}
-
-var boolToStr = map[bool]string{
-	true:  "On",
-	false: "Off",
-}
-
-func pad(opts *options, s *signals.Signal) string {
-	if opts.raw {
-		return string(s.Pad().Raw())
-	}
-	v, err := s.Pad().IsEnabled()
-	if err != nil {
-		return "err"
-	}
-	return boolToStr[v]
-}
-
-func phantom(opts *options, s *signals.Signal) string {
-	if opts.raw {
-		return string(s.Phantom().Raw())
-	}
-	v, err := s.Phantom().IsEnabled()
-	if err != nil {
-		return "err"
-	}
-	return boolToStr[v]
 }

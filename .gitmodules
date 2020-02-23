@@ -7,3 +7,6 @@
 [submodule "carbonio/vendor/github.com/spf13/pflag"]
 	path = carbonio/vendor/github.com/spf13/pflag
 	url = https://github.com/spf13/pflag.git
+[submodule "carbonio/vendor/github.com/gorilla/mux"]
+	path = carbonio/vendor/github.com/gorilla/mux
+	url = https://github.com/gorilla/mux.git

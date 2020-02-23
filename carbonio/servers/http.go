@@ -6,7 +6,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/handlers"
 	"github.com/kward/avid-s3l/carbonio/helpers"
@@ -17,16 +19,46 @@ var (
 	device    devices.Device
 )
 
-func HttpServer(port int, dev devices.Device) {
-	device = dev
+func HttpServer(port int, device devices.Device) {
+	if device == nil {
+		log.Printf("device is unitialized")
+		return
+	}
+
+	h, err := handlers.NewHandlers(device,
+		handlers.Port(port))
+	if err != nil {
+		log.Printf("error instantiating handlers; %s", err)
+		return
+	}
+
+	ip := device.IP()
+	var host string
+	if ip.DefaultMask() != nil {
+		host = ip.String()
+	} else {
+		host = fmt.Sprintf("[%s]", ip)
+	}
+	addr := fmt.Sprintf("%s:%d", host, port)
+	fmt.Printf("carbonio server starting on http://%s\n", addr)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", rootHandler)
+	r.HandleFunc("/list", h.ListHandler)
+	r.HandleFunc("/list_query", h.ListQueryHandler)
+	r.HandleFunc("/status", h.StatusHandler)
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         addr,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	fmt.Println("server started")
+
 	log.SetFlags(0)
-
-	http.HandleFunc("/", rootHandler)
-	http.Handle("/list", handlers.NewListHandler(device))
-	http.Handle("/status", handlers.NewStatusHandler(device))
-
-	fmt.Println("carbonio server starting")
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	log.Fatal(srv.ListenAndServe())
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {

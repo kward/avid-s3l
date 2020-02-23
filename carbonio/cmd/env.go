@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"net"
 
-	"github.com/kward/golib/errors"
+	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc/codes"
 )
 
 func init() {
@@ -19,39 +17,10 @@ func init() {
 }
 
 func env(cmd *cobra.Command, args []string) {
-	ip, err := linkLocalIP()
+	ip, err := devices.LinkLocalIP()
 	if err != nil {
 		fmt.Printf("link local ip: error %s\n", err)
 	} else {
 		fmt.Printf("link local ip: %v\n", ip)
 	}
-}
-
-// linkLocalIP returns the link local IP of the device.
-func linkLocalIP() (net.IP, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, errors.Errorf(codes.Internal, "unable to enumerate the network interfaces")
-	}
-
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			return nil, errors.Errorf(codes.Internal, "unable to enumerate the network addresses")
-		}
-
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip.IsLinkLocalUnicast() {
-				return ip, nil
-			}
-		}
-	}
-	return nil, errors.Errorf(codes.NotFound, "unable to determine link local IP address")
 }

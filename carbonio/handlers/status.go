@@ -9,45 +9,18 @@ import (
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/leds"
 	"github.com/kward/tabulate/tabulate"
 )
 
 const statusTmpl = "html/status.tmpl"
 
 func init() {
-	register(&StatusHandler{})
 	mustTemplate(statusTmpl)
 }
 
-// StatusHandler implements a handler for status requests.
-type StatusHandler struct {
-	opts   *options
-	device devices.Device
-}
-
-func NewStatusHandler(device devices.Device, opts ...func(*options) error) Handler {
-	if device == nil {
-		helpers.Exit(fmt.Sprintln("device is uninitialized"))
-	}
-
-	o := &options{}
-	for _, opt := range opts {
-		if err := opt(o); err != nil {
-			helpers.Exit(fmt.Sprintf("invalid option; %s", err))
-		}
-	}
-	if err := o.validate(); err != nil {
-		helpers.Exit(fmt.Sprintf("failed to validate options"))
-	}
-
-	return &StatusHandler{
-		opts:   o,
-		device: device,
-	}
-}
-
-func (h *StatusHandler) ServeCommand(w io.Writer) {
-	str, err := h.status()
+func (h *Handlers) StatusCommand(w io.Writer) {
+	str, err := status(h.device, h.opts.raw)
 	if err != nil {
 		helpers.Exit(fmt.Sprintf("error gathering status information; %s", err))
 	}
@@ -58,18 +31,18 @@ func (h *StatusHandler) ServeCommand(w io.Writer) {
 	}
 }
 
-func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	status := http.StatusOK
+func (h *Handlers) StatusHandler(w http.ResponseWriter, r *http.Request) {
+	stts := http.StatusOK
 	buf := &bytes.Buffer{}
 
-	str, err := h.status()
+	str, err := status(h.device, h.opts.raw)
 	if err != nil {
-		status = http.StatusInternalServerError
-		w.WriteHeader(status)
+		stts = http.StatusInternalServerError
+		w.WriteHeader(stts)
 		log.Printf("%s", err)
 	}
 
-	if status == http.StatusOK {
+	if stts == http.StatusOK {
 		data := struct {
 			Title    string
 			Contents string
@@ -79,31 +52,38 @@ func (h *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		err = tmpls[statusTmpl].Execute(io.Writer(buf), data)
 		if err != nil {
-			status = http.StatusInternalServerError
-			w.WriteHeader(status)
+			stts = http.StatusInternalServerError
+			w.WriteHeader(stts)
 			log.Printf("error executing template; %s", err)
 		}
 	}
 
 	l := 0
-	if status == http.StatusOK {
+	if stts == http.StatusOK {
 		l, err = w.Write(buf.Bytes())
 		if err != nil {
-			status = http.StatusInternalServerError
-			w.WriteHeader(status)
+			stts = http.StatusInternalServerError
+			w.WriteHeader(stts)
 		}
 	}
 
-	helpers.CommonLogFormat(r, status, l)
+	helpers.CommonLogFormat(r, stts, l)
 }
 
-func (h *StatusHandler) Name() string { return "status" }
-
-func (h *StatusHandler) status() (string, error) {
+func status(device devices.Device, asRaw bool) (string, error) {
 	lines := []string{"LED STATUS"}
-	lines = append(lines, fmt.Sprintf("Power %s", h.device.LEDs().Power()))
-	lines = append(lines, fmt.Sprintf("Status %s", h.device.LEDs().Status()))
-	lines = append(lines, fmt.Sprintf("Mute %s", h.device.LEDs().Mute()))
+
+	for _, led := range []*leds.LED{
+		device.LEDs().Power(),
+		device.LEDs().Status(),
+		device.LEDs().Mute(),
+	} {
+		state, err := led.State()
+		if err != nil {
+			log.Printf("error reading %s led state; %s", led.Name(), err)
+		}
+		lines = append(lines, fmt.Sprintf("%s %s", led.Name(), state))
+	}
 
 	tbl, err := tabulate.NewTable()
 	if err != nil {
