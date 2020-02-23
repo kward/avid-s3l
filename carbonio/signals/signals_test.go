@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kward/avid-s3l/carbonio/helpers"
-	"github.com/kward/golib/operators"
+	"github.com/kward/avid-s3l/carbonio/spi"
 )
 
 func TestMain(m *testing.M) {
@@ -19,48 +19,24 @@ func TestMain(m *testing.M) {
 
 func TestNewInput(t *testing.T) {
 	for _, tc := range []struct {
-		desc       string
-		ok         bool
-		num        uint
-		maxNum     uint
-		dir        Dir
-		gainSPI    string
-		padSPI     string
-		phantomSPI string
+		desc string
+		ok   bool
+
+		num    int
+		maxNum int
 	}{
 		// Valid inputs.
-		{"signal 1", true,
-			1, 16, Input,
-			"/spi/base/spi1.1/ch0_preamp_gain",
-			"/spi/base/spi1.1/ch0_pad_en",
-			"/spi/base/spi4.0/adc1_phantom_en"},
-		{"signal 2", true,
-			2, 16, Input,
-			"/spi/base/spi1.1/ch1_preamp_gain",
-			"/spi/base/spi1.1/ch1_pad_en",
-			"/spi/base/spi4.0/adc1_phantom_en"},
-		{"signal 15", true,
-			15, 16, Input,
-			"/spi/base/spi1.2/ch2_preamp_gain",
-			"/spi/base/spi1.2/ch2_pad_en",
-			"/spi/base/spi4.0/adc2_phantom_en"},
-		{"signal 16", true,
-			16, 16, Input,
-			"/spi/base/spi1.2/ch3_preamp_gain",
-			"/spi/base/spi1.2/ch3_pad_en",
-			"/spi/base/spi4.0/adc2_phantom_en"},
+		{"signal #1", true, 1, 16},
+		{"signal #2", true, 2, 16},
+		{"signal #15", true, 15, 16},
+		{"signal #16", true, 16, 16},
 
 		// Invalid inputs.
-		{desc: "Number out of range", num: 99, maxNum: 16, dir: Input},
-		{desc: "MaxNumber not set", num: 16, maxNum: 0, dir: Input},
+		{desc: "Number out of range", num: 99, maxNum: 16},
+		{desc: "MaxNumber not set", num: 16, maxNum: 0},
 	} {
 		t.Run(fmt.Sprintf("New() %s", tc.desc), func(t *testing.T) {
-			s, err := New("Beep-ba-beep",
-				SPIBaseDir("/spi/base"),
-				Number(tc.num),
-				MaxNumber(tc.maxNum),
-				Direction(tc.dir),
-			)
+			s, err := newInput("Beep-ba-beep", tc.num, tc.maxNum)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -70,52 +46,51 @@ func TestNewInput(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := s.gainSPI, tc.gainSPI; got != want {
-				t.Errorf("gainSPI = %s, want %s", got, want)
+			// Verify that the SPI interfaces were setup.
+			if got, want := s.gain.Name(), spi.Gain.String(); got != want {
+				t.Errorf("gain Name() = %q, want %q", got, want)
 			}
-			if got, want := s.padSPI, tc.padSPI; got != want {
-				t.Errorf("padSPI = %s, want %s", got, want)
+			if got, want := s.pad.Name(), spi.Pad.String(); got != want {
+				t.Errorf("pad Name() = %q, want %q", got, want)
 			}
-			if got, want := s.phantomSPI, tc.phantomSPI; got != want {
-				t.Errorf("phantomSPI = %s, want %s", got, want)
+			if got, want := s.phantom.Name(), spi.Phantom.String(); got != want {
+				t.Errorf("phantom Name() = %q, want %q", got, want)
 			}
 		})
 	}
 }
 
 func TestGain(t *testing.T) {
+	signal, err := newInput("TestGain", 1, 16)
+	if err != nil {
+		t.Fatalf("error setting up test; %s", err)
+	}
+
 	for _, tc := range []struct {
-		desc    string
-		ok      bool
-		input   []byte
-		readErr error
-		gain    uint
+		desc     string
+		ok       bool
+		rfErr    error // MockReadFile error.
+		spiValue int   // Current SPI value.
+
+		gain uint
 	}{
 		// Supported values.
-		{"13 dB", true, []byte{'4', '\n'}, nil, 13},
-		{"21 dB", true, []byte{'1', '2', '\n'}, nil, 21},
-		{"34 dB", true, []byte{'2', '5', '\n'}, nil, 34},
-		{"55 dB", true, []byte{'4', '6', '\n'}, nil, 55},
+		{"13 dB", true, nil, 4, 13},
+		{"21 dB", true, nil, 12, 21},
+		{"34 dB", true, nil, 25, 34},
+		{"55 dB", true, nil, 46, 55},
 
 		// Error states.
-		{desc: "9 dB too low", input: []byte{'0', '\n'}},
-		{desc: "89 dB too high", input: []byte{'8', '0', '\n'}},
-		{desc: "empty file", input: []byte{}},
-		{desc: "readfile error", readErr: fmt.Errorf("some error")},
+		{desc: "spi value too low", spiValue: 0},
+		{desc: "spi value too high", spiValue: 52},
+		{desc: "readfile error", rfErr: fmt.Errorf("mock ReadFile error")},
 	} {
-		signal, err := New("TestGain",
-			SPIBaseDir("/spi/base"),
-			Number(1),
-			MaxNumber(16),
-			Direction(Input),
-		)
-		if err != nil {
-			t.Fatalf("error setting up test; %s", err)
-		}
-
 		t.Run(fmt.Sprintf("Gain() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareReadFile(tc.input, tc.readErr)
-			got, err := signal.Gain()
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockReadFile([]byte{}, tc.rfErr)
+			signal.Pad().spi.Write(tc.spiValue)
+
+			got, err := signal.Gain().Value()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -133,40 +108,38 @@ func TestGain(t *testing.T) {
 }
 
 func TestSetGain(t *testing.T) {
+	signal, err := newInput("TestGain", 1, 16)
+	if err != nil {
+		t.Fatalf("error setting up test; %s", err)
+	}
+
 	for _, tc := range []struct {
-		desc     string
-		ok       bool
-		gain     uint
-		output   []byte
-		writeErr error
+		desc  string
+		ok    bool
+		wfErr error // MockWriteFile error.
+
+		gain  uint
+		value int
 	}{
 		// Supported values.
-		{"11 dB", true, 11, []byte{'2', '\n'}, nil},
-		{"13 dB", true, 13, []byte{'4', '\n'}, nil},
-		{"17 dB", true, 17, []byte{'8', '\n'}, nil},
+		{"11 dB", true, nil, 11, 2},
+		{"13 dB", true, nil, 13, 4},
+		{"17 dB", true, nil, 17, 8},
 		//...
-		{"47 dB", true, 47, []byte{'3', '8', '\n'}, nil},
-		{"53 dB", true, 53, []byte{'4', '4', '\n'}, nil},
-		{"59 dB", true, 59, []byte{'5', '0', '\n'}, nil},
+		{"47 dB", true, nil, 47, 38},
+		{"53 dB", true, nil, 53, 44},
+		{"59 dB", true, nil, 59, 50},
 
 		// Error states.
-		{desc: "7 dB is too low"},
-		{desc: "61 dB is too high"},
-		{desc: "readfile error", writeErr: fmt.Errorf("some error")},
+		{desc: "7 dB is too low", gain: 7},
+		{desc: "61 dB is too high", gain: 61},
+		{desc: "writefile error", wfErr: fmt.Errorf("mock WriteFile error")},
 	} {
-		signal, err := New("TestGain",
-			SPIBaseDir("/spi/base"),
-			Number(1),
-			MaxNumber(16),
-			Direction(Input),
-		)
-		if err != nil {
-			t.Fatalf("error setting up test; %s", err)
-		}
-
 		t.Run(fmt.Sprintf("Gain() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareWriteFile(tc.writeErr)
-			err := signal.SetGain(tc.gain)
+			helpers.ResetMockReadWrite()
+			// TODO(2020-02-23) Stop writing files directly.
+			helpers.PrepareMockWriteFile(tc.wfErr)
+			err := signal.Gain().SetValue(tc.gain)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -176,45 +149,43 @@ func TestSetGain(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
+			if got, want := signal.Gain().spi.Value(), tc.value; got != want {
+				t.Errorf("SPI Value() = %d, want %d", want, got)
 			}
 		})
 	}
 }
 
 func TestPad(t *testing.T) {
+	signal, err := newInput("TestPad", 1, 16)
+	if err != nil {
+		t.Fatalf("error setting up test; %s", err)
+	}
+
 	for _, tc := range []struct {
-		desc      string
-		ok        bool
-		input     []byte
-		readErr   error
+		desc     string
+		ok       bool
+		rfErr    error // MockReadFile error.
+		spiValue int   // Current SPI value.
+
 		isEnabled bool
 	}{
 		// Supported states.
-		{"off", true, []byte{'0', '\n'}, nil, false},
-		{"on", true, []byte{'1', '\n'}, nil, true},
+		{"off", true, nil, 0, false},
+		{"on", true, nil, 1, true},
 
 		// Error states.
-		{desc: "unsupported data", input: []byte{0xff, '\n'}},
-		{desc: "empty file", input: []byte{}},
-		{desc: "readfile error", readErr: fmt.Errorf("ReadFile error")},
+		{desc: "unsupported spi value", spiValue: 123},
+		{desc: "readfile error", rfErr: fmt.Errorf("mock ReadFile error")},
 	} {
-		signal, err := New("TestPad",
-			SPIBaseDir("/spi/base"),
-			Number(1),
-			MaxNumber(16),
-			Direction(Input),
-		)
-		if err != nil {
-			t.Fatalf("error setting up test; %s", err)
-		}
-
 		t.Run(fmt.Sprintf("Pad() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareReadFile(tc.input, tc.readErr)
-			got, err := signal.Pad()
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockReadFile([]byte{}, tc.rfErr)
+			signal.Pad().spi.Write(tc.spiValue)
+
+			got, err := signal.Pad().IsEnabled()
 			if err != nil && tc.ok {
-				t.Fatalf("unexpected error %q", err)
+				t.Fatalf("unexpected error; %s", err)
 			}
 			if err == nil && !tc.ok {
 				t.Fatalf("expected an error")
@@ -229,34 +200,33 @@ func TestPad(t *testing.T) {
 	}
 }
 
-func TestSetPad(t *testing.T) {
+func TestPad_SetPad(t *testing.T) {
+	signal, err := newInput("TestSetPad", 1, 16)
+	if err != nil {
+		t.Fatalf("error setting up test; %s", err)
+	}
+
 	for _, tc := range []struct {
-		desc     string
-		ok       bool
-		enable   bool
-		output   []byte
-		writeErr error
+		desc  string
+		ok    bool
+		wfErr error // MockWriteFile error.
+
+		enable bool
+		value  int
 	}{
 		// Supported states.
-		{"off", true, false, []byte{'0', '\n'}, nil},
-		{"on", true, true, []byte{'1', '\n'}, nil},
+		{"off", true, nil, PadDisabled, 0},
+		{"on", true, nil, PadEnabled, 1},
 
 		// Error states.
-		{desc: "writefile error", writeErr: fmt.Errorf("WriteFile error")},
+		{desc: "writefile error", wfErr: fmt.Errorf("mock WriteFile error")},
 	} {
-		signal, err := New("TestSetPad",
-			SPIBaseDir("/spi/base"),
-			Number(1),
-			MaxNumber(16),
-			Direction(Input),
-		)
-		if err != nil {
-			t.Fatalf("error setting up test; %s", err)
-		}
-
 		t.Run(fmt.Sprintf("SetPad() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareWriteFile(tc.writeErr)
-			err := signal.SetPad(tc.enable)
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockWriteFile(tc.wfErr)
+
+			// Calling setState() directly as [En|Dis]able are simple enough.
+			err := signal.Pad().setState(tc.enable)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -266,64 +236,60 @@ func TestSetPad(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
+			if got, want := signal.Pad().spi.Value(), tc.value; got != want {
+				t.Errorf("SPI Value() = %d, want %d", want, got)
 			}
 		})
 	}
 }
 
-func TestPhantom(t *testing.T) {
+func TestPhantom_IsEnabled(t *testing.T) {
 	for _, tc := range []struct {
-		desc      string
-		ok        bool
-		num       uint
-		input     []byte
-		readErr   error
+		desc     string
+		ok       bool
+		rfErr    error // MockReadFile error.
+		spiValue int   // Current SPI value.
+
+		num       int
 		isEnabled bool
 	}{
 		// Supported states. "only" indicates that only that phantom is on/off, and
 		// "all" indicates that "all" phantoms for the `agc` device are in that state.
+		{"only 1 on", true, nil, 0b00001000, 1, true},
+		{"only 1 off", true, nil, 0b00000111, 1, false},
+		{"all on 1 on", true, nil, 0b00001111, 1, true},
+		{"all off 1 off", true, nil, 0b00000000, 1, false},
 
-		{"only 1 on", true, 1, []byte{'8', '\n'}, nil, true},
-		{"only 1 off", true, 1, []byte{'7', '\n'}, nil, false},
-		{"all on 1 on", true, 1, []byte{'1', '5', '\n'}, nil, true},
-		{"all off 1 off", true, 1, []byte{'0', '\n'}, nil, false},
+		{"only 2 on", true, nil, 0b00000100, 2, true},
+		{"only 2 off", true, nil, 0b00001011, 2, false},
+		{"all on 2 on", true, nil, 0b00001111, 2, true},
+		{"all off 2 off", true, nil, 0b00000000, 2, false},
 
-		{"only 2 on", true, 2, []byte{'4', '\n'}, nil, true},
-		{"only 2 off", true, 2, []byte{'1', '1', '\n'}, nil, false},
-		{"all on 2 on", true, 2, []byte{'1', '5', '\n'}, nil, true},
-		{"all off 2 off", true, 2, []byte{'0', '\n'}, nil, false},
+		{"only 15 on", true, nil, 0b00000010, 15, true},
+		{"only 15 off", true, nil, 0b00001101, 15, false},
+		{"all on 15 on", true, nil, 0b00001111, 15, true},
+		{"all off 15 off", true, nil, 0b00000000, 15, false},
 
-		{"only 15 on", true, 15, []byte{'2', '\n'}, nil, true},
-		{"only 15 off", true, 15, []byte{'1', '3', '\n'}, nil, false},
-		{"all on 15 on", true, 15, []byte{'1', '5', '\n'}, nil, true},
-		{"all off 15 off", true, 15, []byte{'0', '\n'}, nil, false},
-
-		{"only 16 on", true, 16, []byte{'1', '\n'}, nil, true},
-		{"only 16 off", true, 16, []byte{'1', '4', '\n'}, nil, false},
-		{"all on 16 on", true, 16, []byte{'1', '5', '\n'}, nil, true},
-		{"all off 16 off", true, 16, []byte{'0', '\n'}, nil, false},
+		{"only 16 on", true, nil, 0b00000001, 16, true},
+		{"only 16 off", true, nil, 0b00001110, 16, false},
+		{"all on 16 on", true, nil, 0b00001111, 16, true},
+		{"all off 16 off", true, nil, 0b00000000, 16, false},
 
 		// Error states.
-		{desc: "unsupported data", num: 1, input: []byte{0xff, '\n'}},
-		{desc: "unsupported spi value", num: 1, input: []byte{'9', '9', '\n'}},
-		{desc: "empty file", num: 1, input: []byte{}},
-		{desc: "readfile error", num: 1, readErr: fmt.Errorf("ReadFile error")},
+		{desc: "unsupported spi value", spiValue: 99, num: 1},
+		{desc: "readfile error", rfErr: fmt.Errorf("mock ReadFile error"), num: 1},
 	} {
-		signal, err := New("TestPhantom",
-			SPIBaseDir("/spi/base"),
-			Number(tc.num),
-			MaxNumber(16),
-			Direction(Input),
-		)
+		signal, err := newInput("TestPhantom", tc.num, 16)
 		if err != nil {
 			t.Fatalf("error setting up test; %s", err)
 		}
 
 		t.Run(fmt.Sprintf("Phantom() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareReadFile(tc.input, tc.readErr)
-			got, err := signal.Phantom()
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockReadFile([]byte{}, tc.rfErr)
+			signal.Phantom().spi.Write(tc.spiValue)
+
+			got, err := signal.Phantom().IsEnabled()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -344,57 +310,54 @@ func TestSetPhantom(t *testing.T) {
 	for _, tc := range []struct {
 		desc     string
 		ok       bool
-		num      uint
-		input    []byte
-		readErr  error
-		enable   bool
-		output   []byte
-		writeErr error
+		rfErr    error // MockReadFile error.
+		wfErr    error // MockWriteFile error.
+		spiValue int   // Current SPI value.
+
+		num    int
+		enable bool
+		value  int // New SPI value.
 	}{
 		// Supported states. "none" or "all" indicate that none or all four phantoms
 		// are enabled on the given `agc` device.
+		{"none 1 on", true, nil, nil, 0b00000000, 1, true, 0b00001000},
+		{"none 1 off", true, nil, nil, 0b00000000, 1, false, 0b00000000},
+		{"all 1 on", true, nil, nil, 0b00001111, 1, true, 0b00001111},
+		{"all 1 off", true, nil, nil, 0b00001111, 1, false, 0b00000111},
 
-		{"none 1 on", true, 1, []byte{'0', '\n'}, nil, true, []byte{'8', '\n'}, nil},
-		{"none 1 off", true, 1, []byte{'0', '\n'}, nil, false, []byte{'0', '\n'}, nil},
-		{"all 1 on", true, 1, []byte{'1', '5', '\n'}, nil, true, []byte{'1', '5', '\n'}, nil},
-		{"all 1 off", true, 1, []byte{'1', '5', '\n'}, nil, false, []byte{'7', '\n'}, nil},
+		{"none 2 on", true, nil, nil, 0b00000000, 2, true, 0b00000100},
+		{"none 2 off", true, nil, nil, 0b00000000, 2, false, 0b00000000},
+		{"all 2 on", true, nil, nil, 0b00001111, 2, true, 0b00001111},
+		{"all 2 off", true, nil, nil, 0b00001111, 2, false, 0b00001011},
 
-		{"none 2 on", true, 2, []byte{'0', '\n'}, nil, true, []byte{'4', '\n'}, nil},
-		{"none 2 off", true, 2, []byte{'0', '\n'}, nil, false, []byte{'0', '\n'}, nil},
-		{"all 2 on", true, 2, []byte{'1', '5', '\n'}, nil, true, []byte{'1', '5', '\n'}, nil},
-		{"all 2 off", true, 2, []byte{'1', '5', '\n'}, nil, false, []byte{'1', '1', '\n'}, nil},
+		{"none 15 on", true, nil, nil, 0b00000000, 15, true, 0b00000010},
+		{"none 15 off", true, nil, nil, 0b00000000, 15, false, 0b00000000},
+		{"all 15 on", true, nil, nil, 0b00001111, 15, true, 0b00001111},
+		{"all 15 off", true, nil, nil, 0b00001111, 15, false, 0b00001101},
 
-		{"none 15 on", true, 15, []byte{'0', '\n'}, nil, true, []byte{'2', '\n'}, nil},
-		{"none 15 off", true, 15, []byte{'0', '\n'}, nil, false, []byte{'0', '\n'}, nil},
-		{"all 15 on", true, 15, []byte{'1', '5', '\n'}, nil, true, []byte{'1', '5', '\n'}, nil},
-		{"all 15 off", true, 15, []byte{'1', '5', '\n'}, nil, false, []byte{'1', '3', '\n'}, nil},
+		{"none 16 on", true, nil, nil, 0b00000000, 16, true, 0b00000001},
+		{"none 16 off", true, nil, nil, 0b00000000, 16, false, 0b00000000},
+		{"all 16 on", true, nil, nil, 0b00001111, 16, true, 0b00001111},
+		{"all 16 off", true, nil, nil, 0b00001111, 16, false, 0b00001110},
 
-		{"none 16 on", true, 16, []byte{'0', '\n'}, nil, true, []byte{'1', '\n'}, nil},
-		{"none 16 off", true, 16, []byte{'0', '\n'}, nil, false, []byte{'0', '\n'}, nil},
-		{"all 16 on", true, 16, []byte{'1', '5', '\n'}, nil, true, []byte{'1', '5', '\n'}, nil},
-		{"all 16 off", true, 16, []byte{'1', '5', '\n'}, nil, false, []byte{'1', '4', '\n'}, nil},
-
-		// Error states.
-		{desc: "unsupported data", num: 1, input: []byte{0xff, '\n'}},
-		{desc: "unsupported spi value", num: 1, input: []byte{'9', '9', '\n'}},
-		{desc: "empty file", num: 1, input: []byte{}},
-		{desc: "readfile error", num: 1, readErr: fmt.Errorf("ReadFile error")},
-		{desc: "readfile error", num: 1, writeErr: fmt.Errorf("WriteFile error")},
+		// Error states. A ReadFile error is included because the phantom value
+		// must be read before it can be written.
+		{desc: "readfile error", rfErr: fmt.Errorf("mock ReadFile error"), num: 1},
+		{desc: "writefile error", wfErr: fmt.Errorf("mock WriteFile error"), num: 1},
 	} {
-		signal, err := New("TestSetPhantom",
-			SPIBaseDir("/spi/base"),
-			Number(tc.num),
-			MaxNumber(16),
-			Direction(Input),
-		)
+		signal, err := newInput("TestSetPhantom", tc.num, 16)
 		if err != nil {
 			t.Fatalf("error setting up test; %s", err)
 		}
 
 		t.Run(fmt.Sprintf("SetPhantom() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareReadFile(tc.input, tc.readErr)
-			helpers.PrepareWriteFile(tc.writeErr)
-			err := signal.SetPhantom(tc.enable)
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockReadFile([]byte{}, tc.rfErr)
+			helpers.PrepareMockWriteFile(tc.wfErr)
+			signal.Phantom().spi.Write(tc.spiValue)
+
+			// Calling setState() directly as [En|Dis]able are simple enough.
+			err := signal.Phantom().setState(tc.enable)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error %q", err)
 			}
@@ -404,9 +367,18 @@ func TestSetPhantom(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := helpers.MockWriteData(), tc.output; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
+			if got, want := signal.Phantom().spi.Value(), tc.value; got != want {
+				t.Errorf("SPI Value() = %d, want %d", want, got)
 			}
 		})
 	}
+}
+
+func newInput(name string, num, maxNum int) (*Signal, error) {
+	return New(name,
+		Number(num),
+		MaxNumber(maxNum),
+		Direction(Input),
+		SPIDelayRead(true), // Prevent initial read from unprepared SPI.
+	)
 }

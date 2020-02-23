@@ -11,20 +11,25 @@ package signals
 import (
 	"fmt"
 	"os"
-	"path"
-	"strconv"
 
-	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/spi"
 )
 
-func MicInputs(spiBaseDir string, verbose bool, numInputs uint) (Signals, error) {
+func MicInputs(numInputs int, opts ...func(*options) error) (Signals, error) {
 	if numInputs == 0 {
 		return nil, fmt.Errorf("invalid number of inputs %d", numInputs)
 	}
 
+	o := &options{}
+	for _, opt := range opts {
+		if err := opt(o); err != nil {
+			return nil, err
+		}
+	}
+
 	// Mic inputs. Counting inputs from 1, i.e. 1-16 (not 0-15).
 	ss := Signals{}
-	for i := uint(1); i <= numInputs; i++ {
+	for i := 1; i <= numInputs; i++ {
 		s, err := New(
 			fmt.Sprintf("Mic input #%d", i),
 			MaxNumber(numInputs),
@@ -33,8 +38,9 @@ func MicInputs(spiBaseDir string, verbose bool, numInputs uint) (Signals, error)
 			Connector(XLR),
 			Format(Analog),
 			Level(Mic),
-			SPIBaseDir(spiBaseDir),
-			Verbose(verbose),
+			SPIDelayRead(o.spiDelayRead),
+			SPIBaseDir(o.spiBaseDir),
+			Verbose(o.verbose),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating input %d; %s", i, err)
@@ -45,16 +51,16 @@ func MicInputs(spiBaseDir string, verbose bool, numInputs uint) (Signals, error)
 	return ss, nil
 }
 
-type Signals map[uint]*Signal
+type Signals map[int]*Signal
 
 // Signal describes a Carbon I/O signal.
 type Signal struct {
 	opts *options
-	name string
 
-	gainSPI    string
-	padSPI     string
-	phantomSPI string
+	name    string
+	gain    *Gain
+	pad     *Pad
+	phantom *Phantom
 }
 
 // New instantiates a new Signal.
@@ -69,115 +75,203 @@ func New(name string, opts ...func(*options) error) (*Signal, error) {
 		return nil, err
 	}
 
-	s := &Signal{
-		opts:       o,
-		name:       name,
-		gainSPI:    path.Join(o.spiBaseDir, GainPath(o.num)),
-		padSPI:     path.Join(o.spiBaseDir, PadPath(o.num)),
-		phantomSPI: path.Join(o.spiBaseDir, PhantomPath(o.num)),
+	gain, err := spi.New(spi.Gain, o.num,
+		spi.DelayRead(o.spiDelayRead),
+		spi.BaseDir(o.spiBaseDir),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failure instantiating Gain SPI; %s", err)
 	}
+	pad, err := spi.New(spi.Pad, o.num,
+		spi.DelayRead(o.spiDelayRead),
+		spi.BaseDir(o.spiBaseDir),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failure instantiating Pad SPI; %s", err)
+	}
+	phantom, err := spi.New(spi.Phantom, o.num,
+		spi.DelayRead(o.spiDelayRead),
+		spi.BaseDir(o.spiBaseDir),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failure instantiating Phantom SPI; %s", err)
+	}
+
+	s := &Signal{
+		opts:    o,
+		name:    name,
+		gain:    &Gain{gain},
+		pad:     &Pad{pad},
+		phantom: &Phantom{phantom, o.num},
+	}
+
 	if o.verbose {
 		fmt.Fprintf(os.Stderr, "%#v\n", s)
 	}
 	return s, nil
 }
 
-func (s *Signal) Connector() Conn { return s.opts.conn }
-func (s *Signal) Format() Fmt     { return s.opts.fmt }
-func (s *Signal) Level() Lvl      { return s.opts.lvl }
+func (s *Signal) Connector() ConnectorEnum { return s.opts.conn }
+func (s *Signal) Direction() DirectionEnum { return s.opts.dir }
+func (s *Signal) Format() FormatEnum       { return s.opts.fmt }
+func (s *Signal) Level() LevelEnum         { return s.opts.lvl }
 
-const gainOffset = 9 // Offset value between spi value and real dB gain.
+func (s *Signal) Gain() *Gain       { return s.gain }
+func (s *Signal) Pad() *Pad         { return s.pad }
+func (s *Signal) Phantom() *Phantom { return s.phantom }
 
-// Gain returns the current gain level in dB.
+// Gain provides access to the gain SPI.
+type Gain struct {
+	spi *spi.SPI
+}
+
+// Ensure spi interfaces are implemented.
+var _ spi.Implementation = new(Gain)
+
+const (
+	gainMin    = 10
+	gainMax    = 60
+	gainOffset = 9 // Offset between SPI value and real dB gain.
+)
+
+// Value returns the gain level in dB.
 //
-// The spi gain value is between 1-51, which represents a gain of 10-60 dB.
-func (s *Signal) Gain() (uint, error) {
-	u, err := readFileUint(s, s.gainSPI)
+// The SPI gain value is between 1-51, which represents a gain of 10-60 dB.
+func (g *Gain) Value() (uint, error) {
+	v, err := g.spi.Read()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error reading gain; %s", err)
 	}
-	if u < 1 || u > 51 {
-		return 0, fmt.Errorf("unsupported spi gain value %d", u)
+	if v < (gainMin-gainOffset) || v > (gainMax-gainOffset) {
+		return 0, fmt.Errorf("unsupported spi gain value %d", v)
 	}
-	return u + gainOffset, nil
+	return uint(v) + gainOffset, nil
 }
 
-// GainRaw returns the raw gain value.
-func (s *Signal) GainRaw() (string, error) {
-	v, err := helpers.ReadSPIFile(s.gainSPI)
-	if err != nil {
-		return "", fmt.Errorf("error reading gain from %s; %s", s.gainSPI, err)
-	}
-	return v, nil
-}
-
-// SetGain for the given signal.
-func (s *Signal) SetGain(gain uint) error {
-	if gain < 10 || gain > 60 {
+// SetValue of gain in dB.
+func (g *Gain) SetValue(gain uint) error {
+	if gain < gainMin || gain > gainMax {
 		return fmt.Errorf("unsupported gain value %d", gain)
 	}
-	if err := helpers.WriteSPIFile(s.gainSPI, fmt.Sprintf("%d", gain-gainOffset)); err != nil {
+	if err := g.spi.Write(int(gain - gainOffset)); err != nil {
 		return fmt.Errorf("error writing gain; %s", err)
 	}
 	return nil
 }
+
+// Initialize implements spi.Implementation.
+func (g *Gain) Initialize() error { return g.SetValue(gainMin) }
+
+// Name implements spi.Implementation.
+func (g *Gain) Name() string { return g.spi.Name() }
+
+// Path implements spi.Implementation.
+func (g *Gain) Path() string { return g.spi.Path() }
+
+// Raw implements spi.Implementation.
+func (g *Gain) Raw() []byte { return g.spi.Raw() }
+
+// Pad provides access to the pad SPI.
+type Pad struct {
+	spi *spi.SPI
+}
+
+// Ensure spi interfaces are implemented.
+var _ spi.Implementation = new(Pad)
 
 const (
 	PadEnabled  = true
 	PadDisabled = false
 )
 
-// GainPath returns the relative path to control gain for the given signal
-// number.
-func GainPath(num uint) string {
-	return path.Join(channelSPIDir(num), fmt.Sprintf("ch%d_preamp_gain", channelNum(num)))
+// Enable the pad.
+func (p *Pad) Enable() error {
+	return p.setState(PadEnabled)
 }
 
-// Pad returns the current state of the -20 dB pad.
-func (s *Signal) Pad() (bool, error) {
-	v, err := helpers.ReadByte(s.padSPI)
+// Disable the pad.
+func (p *Pad) Disable() error {
+	return p.setState(PadDisabled)
+}
+
+func (p *Pad) setState(state bool) error {
+	v := 0
+	if state {
+		v = 1
+	}
+	if err := p.spi.Write(v); err != nil {
+		return fmt.Errorf("error writing pad; %s", err)
+	}
+	return nil
+}
+
+// IsEnabled returns whether the -20 dB pad is enabled.
+func (p *Pad) IsEnabled() (bool, error) {
+	v, err := p.spi.Read()
 	if err != nil {
 		return false, fmt.Errorf("error reading pad; %s", err)
 	}
 	switch v {
-	case '0':
+	case 0:
 		return PadDisabled, nil
-	case '1':
+	case 1:
 		return PadEnabled, nil
 	default:
 		return false, fmt.Errorf("unsupported spi pad value %d", v)
 	}
 }
 
-// PadRaw returns the raw pad value.
-func (s *Signal) PadRaw() (string, error) {
-	v, err := helpers.ReadSPIFile(s.padSPI)
-	if err != nil {
-		return "", fmt.Errorf("error reading pad from %s; %s", s.padSPI, err)
+// Initialize implements spi.Implementation.
+func (p *Pad) Initialize() error { return p.Disable() }
+
+// Name implements spi.Implementation.
+func (p *Pad) Name() string { return p.spi.Name() }
+
+// Path implements spi.Implementation.
+func (p *Pad) Path() string { return p.spi.Path() }
+
+// Raw implements spi.Implementation.
+func (p *Pad) Raw() []byte { return p.spi.Raw() }
+
+// Phantom provides access to the phantom SPI.
+type Phantom struct {
+	spi *spi.SPI
+	num int
+}
+
+// Ensure spi interfaces are implemented.
+var _ spi.Implementation = new(Phantom)
+
+const (
+	PhantomEnabled  = true
+	PhantomDisabled = false
+)
+
+// Enable the phantom.
+func (p *Phantom) Enable() error {
+	return p.setState(PhantomEnabled)
+}
+
+// Disable the phantom.
+func (p *Phantom) Disable() error {
+	return p.setState(PhantomDisabled)
+}
+
+func (p *Phantom) setState(state bool) error {
+	u := uint(p.spi.Value())
+	v := uint(1 << (3 - ((p.num - 1) % 4)))
+	if state == PhantomEnabled {
+		u = u | v
+	} else {
+		u = u & ^v
 	}
-	return v, nil
-}
-
-// SetPad for the given signal.
-// The pad is controlled with the "spi1.X/chX_pad_en" interface.
-func (s *Signal) SetPad(pad bool) error {
-	var v byte
-	switch pad {
-	case PadEnabled:
-		v = '1'
-	case PadDisabled:
-		v = '0'
+	if err := p.spi.Write(int(u)); err != nil {
+		return fmt.Errorf("error writing phantom; %s", err)
 	}
-	return helpers.WriteByte(s.padSPI, v)
+	return nil
 }
 
-// PadPath returns the relative path to control the pad for the given signal
-// number.
-func PadPath(num uint) string {
-	return path.Join(channelSPIDir(num), fmt.Sprintf("ch%d_pad_en", channelNum(num)))
-}
-
-// Phantom returns the current state of the -48 V phantom.
+// IsEnabled returns whether the -48 V phantom is enabled.
 //
 // Phantom states are stored as 4 bit values of a byte, with the lowest signal
 // number in the highest bit. The byte itself is stored as a string.
@@ -186,120 +280,27 @@ func PadPath(num uint) string {
 // 2 = 4 (0b00000100)
 // 3 = 2 (0b00000010)
 // 4 = 1 (0b00000001)
-func (s *Signal) Phantom() (bool, error) {
-	u, err := readFileUint(s, s.phantomSPI)
+func (p *Phantom) IsEnabled() (bool, error) {
+	v, err := p.spi.Read()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error reading phantom; %s", err)
 	}
-	if u > 0b00001111 { // The max value when all four agc phantoms are enabled.
-		return false, fmt.Errorf("unsupported spi phantom value %d (%08b)", u, u)
+	if v > 0b00001111 { // The max value when all four agc phantoms are enabled.
+		return false, fmt.Errorf("unsupported spi phantom value %d (%08b)", v, v)
 	}
-
-	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
-	return u&v > 0, nil
+	u := uint(v)
+	w := uint(1 << (3 - ((p.num - 1) % 4)))
+	return u&w > 0, nil
 }
 
-// PhantomRaw returns the raw pad value.
-func (s *Signal) PhantomRaw() (string, error) {
-	v, err := helpers.ReadSPIFile(s.phantomSPI)
-	if err != nil {
-		return "", fmt.Errorf("error reading phantom from %s; %s", s.phantomSPI, err)
-	}
-	return v, nil
-}
+// Initialize implements spi.Implementation.
+func (p *Phantom) Initialize() error { return p.Disable() }
 
-// SetPhantom for the given signal.
-//
-// The phantom is controlled with the "spi4.0/adcX_phantom_en" interface.
-func (s *Signal) SetPhantom(phantom bool) error {
-	u, err := readFileUint(s, s.phantomSPI)
-	if err != nil {
-		return err
-	}
-	if u > 0b00001111 { // The max value when all four agc phantoms are enabled.
-		return fmt.Errorf("unsupported spi phantom value %d (%08b)", u, u)
-	}
+// Name implements spi.Implementation.
+func (p *Phantom) Name() string { return p.spi.Name() }
 
-	v := uint(1 << (3 - ((s.opts.num - 1) % 4)))
-	if phantom {
-		u = u | v
-	} else {
-		u = u & ^v
-	}
+// Path implements spi.Implementation.
+func (p *Phantom) Path() string { return p.spi.Path() }
 
-	if err := helpers.WriteSPIFile(s.phantomSPI, fmt.Sprintf("%d", u)); err != nil {
-		return fmt.Errorf("error writing phantom; %s", err)
-	}
-	return nil
-}
-
-// PhantomPath maps the input number to the appropriate SPI device path.
-//
-// Input signals are controlled with individual files using the SPI device
-// interface. The inputs are spread across devices and phantoms are prefixed
-// with a adcX value (e.g., "adc1" for input #1, or "adc2" for input #16).
-//
-// See also `channelPrefix()`.
-func PhantomPath(num uint) string {
-	var spi string
-	switch num {
-	case 1, 2, 3, 4:
-		spi = "adc1_phantom_en"
-	case 5, 6, 7, 8:
-		spi = "adc0_phantom_en"
-	case 9, 10, 11, 12:
-		spi = "adc3_phantom_en"
-	case 13, 14, 15, 16:
-		spi = "adc2_phantom_en"
-	default:
-		return "unknown"
-	}
-	return path.Join("spi4.0", spi)
-}
-
-// readFileUint returns a uint representation of the file.
-func readFileUint(s *Signal, filename string) (uint, error) {
-	data, err := helpers.ReadSPIFile(filename)
-	if err != nil {
-		return 0, err
-	}
-	// Convert data (slice of bytes) to a uint.
-	u64, err := strconv.ParseUint(data, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("error converting %q to an int; %s", data, err)
-	}
-	return uint(u64), nil
-}
-
-// channelSPI maps the input number to the appropriate SPI device path.
-//
-// Input signals are controlled with individual files using the SPI device
-// interface. The inputs are spread across devices (e.g., "spi1.1" for input
-// signal 1, or "spi1.2" for input signal 16).
-//
-// See also `channelPrefix()`.
-func channelSPIDir(num uint) string {
-	switch num {
-	case 1, 2, 3, 4:
-		return "spi1.1"
-	case 5, 6, 7, 8:
-		return "spi1.0"
-	case 9, 10, 11, 12:
-		return "spi1.3"
-	case 13, 14, 15, 16:
-		return "spi1.2"
-	default:
-		return "unknown"
-	}
-}
-
-// channelNum maps the input number to the appropriate channel number.
-//
-// Input signals are controlled with individual files using the SPI device
-// interface. The inputs are spread across devices and channels are prefixed
-// with a chX value (e.g., "ch0" for input #1, or "ch3" for input #16).
-//
-// See also `channelSPIDir()`.
-func channelNum(num uint) uint {
-	return (num - 1) % 4
-}
+// Raw implements spi.Implementation.
+func (p *Phantom) Raw() []byte { return p.spi.Raw() }

@@ -1,17 +1,23 @@
 package leds
 
-import "fmt"
-
 type options struct {
+	// SPI options.
+	spiDelayRead bool // Delay SPI Read() until first direct call.
 	// Global flags.
 	spiBaseDir string
 	verbose    bool
 }
 
 func (o *options) validate() error {
-	if o.spiBaseDir == "" {
-		return fmt.Errorf("SPIBaseDir option missing")
-	}
+	return nil
+}
+
+// SPIDelayRead returns whether SPI Read() should be delayed until first call.
+func SPIDelayRead(v bool) func(*options) error {
+	return func(o *options) error { return o.setSPIDelayRead(v) }
+}
+func (o *options) setSPIDelayRead(v bool) error {
+	o.spiDelayRead = v
 	return nil
 }
 

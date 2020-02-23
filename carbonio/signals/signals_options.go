@@ -4,24 +4,21 @@ import "fmt"
 
 type options struct {
 	// Device options.
-	maxNum uint // Maximum number of signals of this type.
-
+	maxNum int // Maximum number of signals of this type.
 	// Signal options.
-	num  uint // Signal number (1-based, i.e. 1 is the first signal number).
-	dir  Dir
-	conn Conn
-	fmt  Fmt
-	lvl  Lvl
-
+	num  int // Signal number (1-based, i.e. 1 is the first signal number).
+	conn ConnectorEnum
+	dir  DirectionEnum
+	fmt  FormatEnum
+	lvl  LevelEnum
+	// SPI options.
+	spiDelayRead bool // Delay SPI Read() until first direct call.
 	// Global flags.
 	spiBaseDir string
 	verbose    bool
 }
 
 func (o *options) validate() error {
-	if o.spiBaseDir == "" {
-		return fmt.Errorf("SPIBaseDir option missing")
-	}
 	if o.maxNum == 0 {
 		return fmt.Errorf("MaxNumber option missing")
 	}
@@ -32,56 +29,65 @@ func (o *options) validate() error {
 }
 
 // MaxNumber returns the maximum number of supported signals.
-func MaxNumber(v uint) func(*options) error {
+func MaxNumber(v int) func(*options) error {
 	return func(o *options) error { return o.setMaxNumber(v) }
 }
-func (o *options) setMaxNumber(v uint) error {
+func (o *options) setMaxNumber(v int) error {
 	o.maxNum = v
 	return nil
 }
 
 // Number returns the signal number (1-based).
-func Number(v uint) func(*options) error {
+func Number(v int) func(*options) error {
 	return func(o *options) error { return o.setNumber(v) }
 }
-func (o *options) setNumber(v uint) error {
+func (o *options) setNumber(v int) error {
 	o.num = v
 	return nil
 }
 
 // Connector returns the type of connector for the signal.
-func Connector(v Conn) func(*options) error {
+func Connector(v ConnectorEnum) func(*options) error {
 	return func(o *options) error { return o.setConnector(v) }
 }
-func (o *options) setConnector(v Conn) error {
+func (o *options) setConnector(v ConnectorEnum) error {
 	o.conn = v
 	return nil
 }
 
 // Direction returns the signal direction.
-func Direction(v Dir) func(*options) error {
+func Direction(v DirectionEnum) func(*options) error {
 	return func(o *options) error { return o.setDirection(v) }
 }
-func (o *options) setDirection(v Dir) error {
+func (o *options) setDirection(v DirectionEnum) error {
 	o.dir = v
 	return nil
 }
 
 // Format returns the format of the signal.
-func Format(v Fmt) func(*options) error {
+func Format(v FormatEnum) func(*options) error {
 	return func(o *options) error { return o.setFormat(v) }
 }
-func (o *options) setFormat(v Fmt) error {
+func (o *options) setFormat(v FormatEnum) error {
 	o.fmt = v
 	return nil
 }
 
 // Level returns the level of the signal.
-func Level(v Lvl) func(*options) error {
+func Level(v LevelEnum) func(*options) error {
 	return func(o *options) error { return o.setLevel(v) }
 }
-func (o *options) setLevel(v Lvl) error {
+func (o *options) setLevel(v LevelEnum) error {
 	o.lvl = v
+	return nil
+}
+
+// SPIDelayRead returns whether SPI Read() should be delayed until first call.
+func SPIDelayRead(v bool) func(*options) error {
+	return func(o *options) error { return o.setSPIDelayRead(v) }
+}
+func (o *options) setSPIDelayRead(v bool) error {
+	o.spiDelayRead = v
 	return nil
 }
 

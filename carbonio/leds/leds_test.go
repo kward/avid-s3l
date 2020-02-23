@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kward/avid-s3l/carbonio/helpers"
-	"github.com/kward/golib/operators"
+	"github.com/kward/avid-s3l/carbonio/spi"
 )
 
 func TestMain(m *testing.M) {
@@ -18,47 +18,47 @@ func TestMain(m *testing.M) {
 }
 
 func TestLEDs(t *testing.T) {
-	_, err := New(SPIBaseDir("/spi/base"))
+	_, err := New(SPIDelayRead(true))
 	if err != nil {
 		t.Fatalf("unexpected error; %s", err)
 	}
 }
 
-func TestLED(t *testing.T) {
-	led, err := NewLED("Blinky", "/path/to/blinky",
-		byState{Off: '0', Alert: '1', On: '2', testState: 255},
-		SPIBaseDir("/spi/base"),
+func newLED() (*LED, error) {
+	return NewLED(spi.Blinky,
+		byState{Off: 0, Alert: 1, On: 2, testState: 255},
+		SPIDelayRead(true),
 	)
+}
+
+func TestState(t *testing.T) {
+	led, err := newLED()
 	if err != nil {
 		t.Fatalf("unexpected error; %s", err)
 	}
 
 	for _, tc := range []struct {
-		desc  string
+		desc     string
+		ok       bool
+		rfErr    error
+		spiValue int // Current SPI value.
+
 		state State
-		data  []byte
-		ok    bool
-		rfErr error
-		wfErr error
 	}{
 		// Supported states.
-		{"off", Off, []byte{'0', '\n'}, true, nil, nil},
-		{"on", On, []byte{'2', '\n'}, true, nil, nil},
-		{"alert", Alert, []byte{'1', '\n'}, true, nil, nil},
+		{"off", true, nil, 0, Off},
+		{"alert", true, nil, 1, Alert},
+		{"on", true, nil, 2, On},
 
-		// Unknown states.
-		{desc: "unknown", data: []byte{123, '\n'}},
-		// Data errors.
-		{desc: "zero length data"},
-		{desc: "too much data", data: []byte{1, 2, 3, 4}},
-		{desc: "wrong termination", data: []byte{'2', 34}},
-		// ReadFile errors.
-		{desc: "readfile error", rfErr: fmt.Errorf("ReadFile error")},
-		// Write errors.
-		{desc: "writefile error", wfErr: fmt.Errorf("WriteFile error")},
+		// Error states.
+		{desc: "unsupported spi value", spiValue: 123},
+		{desc: "readfile error", rfErr: fmt.Errorf("mock ReadFile error")},
 	} {
 		t.Run(fmt.Sprintf("State() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareReadFile(tc.data, tc.rfErr)
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockReadFile([]byte{}, tc.rfErr)
+			led.spi.Write(tc.spiValue)
+
 			got, err := led.State()
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error; %s", err)
@@ -73,9 +73,41 @@ func TestLED(t *testing.T) {
 				t.Errorf("= %s, want %s", got, want)
 			}
 		})
+	}
+}
 
+func TestSetState(t *testing.T) {
+	led, err := newLED()
+	if err != nil {
+		t.Fatalf("unexpected error; %s", err)
+	}
+
+	for _, tc := range []struct {
+		desc     string
+		ok       bool
+		wfErr    error
+		spiValue int // Current SPI value.
+
+		state State
+		value int
+	}{
+		// Supported states.
+		{"off to off", true, nil, 0, Off, 0},
+		{"off to alert", true, nil, 0, Alert, 1},
+		{"off to on ", true, nil, 0, On, 2},
+		{"on to on ", true, nil, 2, On, 2},
+		{"on to alert", true, nil, 2, Alert, 1},
+		{"on to off", true, nil, 2, Off, 0},
+
+		// Unknown states.
+		{desc: "unsupported spi value", spiValue: 123},
+		{desc: "writefile error", wfErr: fmt.Errorf("mock WriteFile error")},
+	} {
 		t.Run(fmt.Sprintf("SetState() %s", tc.desc), func(t *testing.T) {
-			helpers.PrepareWriteFile(tc.wfErr)
+			helpers.ResetMockReadWrite()
+			helpers.PrepareMockWriteFile(tc.wfErr)
+			led.spi.Write(tc.spiValue)
+
 			err := led.SetState(tc.state)
 			if err != nil && tc.ok {
 				t.Fatalf("unexpected error; %s", err)
@@ -86,18 +118,22 @@ func TestLED(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			if got, want := helpers.MockWriteData(), tc.data; !operators.EqualSlicesOfByte(got, want) {
-				t.Errorf("expected %v to be written, not %v", want, got)
-			}
-		})
-
-		t.Run(fmt.Sprintf("Path() %s", tc.desc), func(t *testing.T) {
-			if !tc.ok {
-				return
-			}
-			if got, want := led.Path(), "/path/to/blinky"; got != want {
-				t.Errorf("= %s, want %s", got, want)
+			if got, want := led.spi.Value(), tc.value; got != want {
+				t.Errorf("SPI Value() = %d, want %d", want, got)
 			}
 		})
 	}
+}
+
+func TestName(t *testing.T) {
+	led, err := newLED()
+	if err != nil {
+		t.Fatalf("unexpected error; %s", err)
+	}
+
+	t.Run("Name()", func(t *testing.T) {
+		if got, want := led.Name(), spi.Blinky.String(); got != want {
+			t.Errorf("= %q, want %q", got, want)
+		}
+	})
 }

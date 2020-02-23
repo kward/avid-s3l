@@ -7,6 +7,7 @@ import (
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/spi"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +43,7 @@ func Execute() {
 	// TODO(2020-02-18) If this flag is overridden, validate a "version" file to
 	// ensure the structure is appropriate for testing.
 	rootCmd.PersistentFlags().StringVarP(
-		&spiBaseDir, "spi_base_dir", "", devices.SPIDevicesDir, "spi base directory")
+		&spiBaseDir, "spi_base_dir", "", spi.DevicesDir, "spi base directory")
 
 	if err := rootCmd.Execute(); err != nil {
 		helpers.Exit(fmt.Sprintf("error: %v", err))
@@ -56,7 +57,25 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	// Setup carbonio device.
+	// NOTE: declaring with '=' to ensure global `device` is not overridden.
+	spiDelayRead := false
+	if cmd.Use == "create_spi" {
+		spiDelayRead = true
+	}
+	device, err = devices.NewStage16(
+		devices.SPIDelayRead(spiDelayRead),
+		devices.SPIBaseDir(spiBaseDir),
+		devices.Verbose(verbose),
+	)
+	if err != nil {
+		helpers.Exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
+	}
+
 	// Validate spi_base_dir.
+	if cmd.Use == "create_spi" { // We're going to create the dir.
+		return
+	}
 	err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -67,15 +86,6 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 		helpers.Exit(fmt.Sprintf("invalid --spi_base_dir flag value %s", spiBaseDir))
 	}
 
-	// Setup carbonio device.
-	// Declaring with '=' to ensure global `device` is not overridden.
-	device, err = devices.NewStage16(
-		devices.SPIBaseDir(spiBaseDir),
-		devices.Verbose(verbose),
-	)
-	if err != nil {
-		helpers.Exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
-	}
 }
 
 func root(cmd *cobra.Command, args []string) {

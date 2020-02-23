@@ -103,7 +103,7 @@ func (h *ListHandler) Name() string { return "list" }
 func (h *ListHandler) list() (string, error) {
 	lines := []string{"SIGNAL GAIN PAD PHANTOM"}
 
-	for i := uint(1); i <= h.device.NumMicInputs(); i++ {
+	for i := 1; i <= h.device.NumMicInputs(); i++ {
 		in, err := h.device.MicInput(i)
 		if err != nil {
 			log.Printf("error accessing mic input %d; %s\n", i, err)
@@ -127,52 +127,40 @@ func (h *ListHandler) list() (string, error) {
 	return rndr.Render(tbl), nil
 }
 
-func gain(opts *options, input *signals.Signal) string {
-	if !opts.raw {
-		v, err := input.Gain()
-		if err != nil {
-			return "err"
-		}
-		return fmt.Sprintf("%d", v) // TODO(2020-02-17): include dB unit.
+func gain(opts *options, s *signals.Signal) string {
+	if opts.raw {
+		return string(s.Gain().Raw())
 	}
-	v, err := input.GainRaw()
+	v, err := s.Gain().Value()
 	if err != nil {
 		return "err"
 	}
-	return v
+	return fmt.Sprintf("%d", v) // TODO(2020-02-17): include dB unit.
 }
 
-var boolStr = map[bool]string{
+var boolToStr = map[bool]string{
 	true:  "On",
 	false: "Off",
 }
 
-func pad(opts *options, input *signals.Signal) string {
-	if !opts.raw {
-		v, err := input.Pad()
-		if err != nil {
-			return "err"
-		}
-		return boolStr[v]
+func pad(opts *options, s *signals.Signal) string {
+	if opts.raw {
+		return string(s.Pad().Raw())
 	}
-	v, err := input.PadRaw()
+	v, err := s.Pad().IsEnabled()
 	if err != nil {
 		return "err"
 	}
-	return v
+	return boolToStr[v]
 }
 
-func phantom(opts *options, input *signals.Signal) string {
-	if !opts.raw {
-		v, err := input.Phantom()
-		if err != nil {
-			return "err"
-		}
-		return boolStr[v]
+func phantom(opts *options, s *signals.Signal) string {
+	if opts.raw {
+		return string(s.Phantom().Raw())
 	}
-	v, err := input.PhantomRaw()
+	v, err := s.Phantom().IsEnabled()
 	if err != nil {
 		return "err"
 	}
-	return v
+	return boolToStr[v]
 }

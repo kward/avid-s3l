@@ -1,7 +1,6 @@
 package devices
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -11,15 +10,14 @@ type options struct {
 	ip   net.IP
 	host string
 
+	// SPI options.
+	spiDelayRead bool
 	// Global flags.
 	spiBaseDir string
 	verbose    bool
 }
 
 func (o *options) validate() error {
-	if o.spiBaseDir == "" {
-		return fmt.Errorf("SPIBaseDir option missing")
-	}
 	return nil
 }
 
@@ -44,6 +42,15 @@ func MAC(v net.HardwareAddr) func(*options) error {
 }
 func (o *options) setMAC(v net.HardwareAddr) error {
 	o.mac = v
+	return nil
+}
+
+// SPIDelayRead returns whether SPI Read() should be delayed until first call.
+func SPIDelayRead(v bool) func(*options) error {
+	return func(o *options) error { return o.setSPIDelayRead(v) }
+}
+func (o *options) setSPIDelayRead(v bool) error {
+	o.spiDelayRead = v
 	return nil
 }
 

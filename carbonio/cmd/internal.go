@@ -4,12 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 
-	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
-	"github.com/kward/avid-s3l/carbonio/leds"
-	"github.com/kward/avid-s3l/carbonio/signals"
+	"github.com/kward/avid-s3l/carbonio/spi"
 	"github.com/spf13/cobra"
 )
 
@@ -32,45 +29,50 @@ func init() {
 	})
 }
 
-type data struct {
-	path string
-	data string
-}
-
 func internal_create_spi(cmd *cobra.Command, args []string) {
-	if spiBaseDir == devices.SPIDevicesDir {
+	if spiBaseDir == spi.DevicesDir {
 		helpers.Exit(fmt.Sprintf("refusing to overwrite core SPI dir %s", spiBaseDir))
 	}
 
-	tree := []data{}
-
-	ls, err := leds.New(
-		leds.SPIBaseDir(spiBaseDir),
-		leds.Verbose(verbose),
-	)
-	if err != nil {
-		helpers.Exit(fmt.Sprintf("error instantiating leds; %s", err))
+	// Gather the SPI devices to create.
+	type funcs struct {
+		name string
+		path spi.PathFn
+		init spi.InitializeFn
 	}
-	tree = append(tree, data{ls.Power().Path(), "0"})
-	tree = append(tree, data{ls.Status().Path(), "0"})
-	tree = append(tree, data{ls.Mute().Path(), "0"})
-
-	for i := uint(1); i <= device.NumMicInputs(); i++ {
-		tree = append(tree, data{signals.GainPath(i), "1"})
-		tree = append(tree, data{signals.PadPath(i), "0"})
-		tree = append(tree, data{signals.PhantomPath(i), "0"})
+	devs := []funcs{
+		{"LED " + device.LEDs().Power().Name(),
+			device.LEDs().Power().Path, device.LEDs().Power().Initialize},
+		{"LED " + device.LEDs().Status().Name(),
+			device.LEDs().Status().Path, device.LEDs().Status().Initialize},
+		{"LED " + device.LEDs().Mute().Name(),
+			device.LEDs().Mute().Path, device.LEDs().Mute().Initialize},
 	}
-
-	fmt.Printf("spiBaseDir: %s\n", spiBaseDir)
-	for _, t := range tree {
-		fmt.Printf("path: %s data: %q\n", t.path, t.data)
-		p := filepath.Join(spiBaseDir, t.path)
-		if !dryRun {
-			d := path.Dir(p)
-			if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
-				helpers.Exit(fmt.Sprintf("error creating directory %s; %v", d, err))
-			}
-			helpers.WriteSPIFile(p, t.data)
+	for i := 1; i < device.NumMicInputs(); i++ {
+		s, err := device.MicInput(i)
+		if err != nil {
+			fmt.Printf("mic input error; %s", err)
+			continue
 		}
+		devs = append(devs, funcs{fmt.Sprintf("Mic #%d %s", i, s.Gain().Name()),
+			s.Gain().Path, s.Gain().Initialize})
+		devs = append(devs, funcs{fmt.Sprintf("Mic #%d %s", i, s.Pad().Name()),
+			s.Pad().Path, s.Pad().Initialize})
+		devs = append(devs, funcs{fmt.Sprintf("Mic #%d %s", i, s.Phantom().Name()),
+			s.Phantom().Path, s.Phantom().Initialize})
+	}
+
+	// Create the SPI devices.
+	fmt.Println("creating…")
+	for _, dev := range devs {
+		fmt.Printf("  %s: %s\n", dev.name, dev.path())
+		if dryRun {
+			continue
+		}
+		dir := path.Dir(dev.path())
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			helpers.Exit(fmt.Sprintf("error creating directory %s; %v", dir, err))
+		}
+		dev.init()
 	}
 }

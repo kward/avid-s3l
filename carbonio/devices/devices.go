@@ -12,9 +12,7 @@ type Device interface {
 	// LED returns defined LEDs.
 	LEDs() *leds.LEDs
 	// NumMicInputs returns the number of microphone inputs for the device.
-	NumMicInputs() uint
+	NumMicInputs() int
 	// MicInput returns the signal struct for the request input number.
-	MicInput(input uint) (*signals.Signal, error)
+	MicInput(input int) (*signals.Signal, error)
 }
-
-const SPIDevicesDir = "/sys/bus/spi/devices"

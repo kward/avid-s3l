@@ -12,24 +12,12 @@ package leds
 import (
 	"fmt"
 	"os"
-	"path"
 
-	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/spi"
 )
 
-type value byte
-type byState map[State]value
-type byValue map[value]State
-
-// LED describes a Carbon I/O LED.
-type LED struct {
-	opts   *options
-	name   string
-	iface  string
-	spi    string
-	states byState
-	values byValue
-}
+type byState map[State]int
+type byValue map[int]State
 
 type LEDs struct {
 	power, status, mute *LED
@@ -39,21 +27,20 @@ func (l LEDs) Power() *LED  { return l.power }
 func (l LEDs) Status() *LED { return l.status }
 func (l LEDs) Mute() *LED   { return l.mute }
 
-// New instantiates the
+// New instantiates the package level LEDs.
 func New(opts ...func(*options) error) (*LEDs, error) {
 	leds := &LEDs{new(LED), new(LED), new(LED)}
 
 	for _, led := range []struct {
 		led    **LED
-		name   string
-		iface  string
+		enum   spi.Enum
 		states byState
 	}{
-		{&leds.power, "Power", "spi4.0/status_led_1_en", byState{Off: '0', Alert: '1', On: '2', testState: 255}},
-		{&leds.status, "Status", "spi4.0/status_led_0_en", byState{Off: '0', Alert: '1', On: '2', testState: 255}},
-		{&leds.mute, "Mute", "spi4.0/mute_led_en", byState{Off: '0', On: '1', testState: 255}},
+		{&leds.power, spi.Power, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
+		{&leds.status, spi.Status, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
+		{&leds.mute, spi.Mute, byState{Off: 0, On: 1, testState: 255}},
 	} {
-		l, err := NewLED(led.name, led.iface, led.states, opts...)
+		l, err := NewLED(led.enum, led.states, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -63,8 +50,19 @@ func New(opts ...func(*options) error) (*LEDs, error) {
 	return leds, nil
 }
 
+// LED describes a Carbon I/O LED.
+type LED struct {
+	opts   *options
+	spi    *spi.SPI
+	states byState
+	values byValue
+}
+
+// Ensure spi interfaces are implemented.
+var _ spi.Implementation = new(LED)
+
 // NewLED instantiates a new LED.
-func NewLED(name string, iface string, states byState, opts ...func(*options) error) (*LED, error) {
+func NewLED(enum spi.Enum, states byState, opts ...func(*options) error) (*LED, error) {
 	o := &options{}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
@@ -75,10 +73,15 @@ func NewLED(name string, iface string, states byState, opts ...func(*options) er
 		return nil, err
 	}
 
+	s, err := spi.New(enum, 0,
+		spi.DelayRead(o.spiDelayRead),
+		spi.BaseDir(o.spiBaseDir),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failure instantiating %s SPI; %s", enum.String(), err)
+	}
 	led := &LED{
-		name:   name,
-		iface:  iface,
-		spi:    path.Join(o.spiBaseDir, iface),
+		spi:    s,
 		states: states,
 		values: byValue{},
 		opts:   o,
@@ -94,53 +97,45 @@ func NewLED(name string, iface string, states byState, opts ...func(*options) er
 
 // State returns the active state of the LED.
 func (l *LED) State() (State, error) {
-	if l == nil {
-		return Unknown, fmt.Errorf("LED uninitialized")
-	}
-
 	if l.opts.verbose {
-		fmt.Printf("reading LED from %s\n", l.spi)
+		fmt.Printf("reading %s LED from %s\n", l.spi.Name(), l.spi.Path())
 	}
-	v, err := helpers.ReadByte(l.spi)
+	v, err := l.spi.Read()
 	if err != nil {
 		return Unknown, err
 	}
-	s, ok := l.values[value(v)]
+	s, ok := l.values[v]
 	if !ok {
-		return Unknown, fmt.Errorf("unrecognized LED value %q [%d]", v, v)
+		return Unknown, fmt.Errorf("unrecognized %s LED value %d", l.spi.Name(), v)
 	}
 	return s, nil
 }
 
 // SetState changes the state of the LED.
 func (l *LED) SetState(s State) error {
-	if l == nil {
-		return fmt.Errorf("LED uninitialized")
-	}
-
-	var v value
+	var v int
 	v, ok := l.states[s]
 	if !ok {
-		return fmt.Errorf("unrecognized LED state %q [%d]", s, s)
+		return fmt.Errorf("unrecognized %s LED state %q [%d]", l.spi.Name(), s, s)
 	}
 
-	return helpers.WriteByte(l.spi, byte(v))
+	return l.spi.Write(v)
 }
 
-func (l *LED) Path() string {
-	if l == nil {
-		return "uninitialized"
-	}
+// Initialize implements spi.Implementation.
+func (l *LED) Initialize() error { return l.SetState(Off) }
 
-	return l.iface
-}
+// Name implements spi.Implementation.
+func (l *LED) Name() string { return l.spi.Name() }
+
+// Path implements spi.Implementation.
+func (l *LED) Path() string { return l.spi.Path() }
+
+// Raw implements spi.Implementation.
+func (l *LED) Raw() []byte { return l.spi.Raw() }
 
 // String provides a human readable state output.
 func (l *LED) String() string {
-	if l == nil {
-		return "uninitialized"
-	}
-
 	s, _ := l.State()
 	return fmt.Sprintf("%s", s)
 }

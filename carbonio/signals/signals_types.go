@@ -1,39 +1,39 @@
 package signals
 
-//go:generate stringer -output=signals_string.go -type=Dir,Conn,Fmt,Lvl signals_types.go
+//go:generate stringer -output=signals_string.go -type=DirectionEnum,ConnectorEnum,FormatEnum,LevelEnum signals_types.go
 
-// Dir represents the signal direction.
-type Dir int
+// DirectionEnum of the signal.
+type DirectionEnum int
 
 const (
-	unknownDir Dir = iota
+	unknownDirection DirectionEnum = iota
 	Input
 	Output
 )
 
-// Conn represents the physical connection.
-type Conn int
+// ConnectorEnum physical type.
+type ConnectorEnum int
 
 const (
-	unknownConn Conn = iota
+	unknownConnector ConnectorEnum = iota
 	XLR
 	Jack
 )
 
-// Fmt represents the signal format.
-type Fmt int
+// FormatEnum of the signal.
+type FormatEnum int
 
 const (
-	unknownFmt Fmt = iota
+	unknownFormat FormatEnum = iota
 	Analog
 	AES
 )
 
-// Lvl represents the signal level.
-type Lvl int
+// LevelEnum of the signal.
+type LevelEnum int
 
 const (
-	unknownLvl Lvl = iota
+	unknownLevel LevelEnum = iota
 	Line
 	Mic
 )

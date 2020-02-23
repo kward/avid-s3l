@@ -4,22 +4,13 @@ Package helpers provides code snippets that are used across the code base.
 package helpers
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
-
-	"github.com/kward/golib/math"
 )
-
-func init() {
-	SetReadFileFn(ioutil.ReadFile)
-	SetWriteFileFn(ioutil.WriteFile)
-}
 
 // CommonLogFormat generates a log entry in the Common Log Format (CLF).
 //   "%h %l %u %t \"%r\" %>s %b"
@@ -34,10 +25,14 @@ func Exit(msg string) {
 }
 
 //-----------------------------------------------------------------------------
-// SPI helpers.
+// Helpers for testing.
+
+func init() {
+	SetReadFileFn(ioutil.ReadFile)
+	SetWriteFileFn(ioutil.WriteFile)
+}
 
 var (
-	fileMode = os.FileMode(0644)
 	// readFileFn holds a pointer to an ioutil.ReadFile compatible function.
 	readFileFn readFileType
 	// WriteFileFn holds a pointer to an ioutil.WriteFile compatible function.
@@ -47,61 +42,22 @@ var (
 type readFileType func(filename string) ([]byte, error)
 type writeFileType func(filename string, data []byte, perm os.FileMode) error
 
-func SetReadFileFn(fn readFileType)   { readFileFn = fn }
+func ReadFileFn() readFileType   { return readFileFn }
+func WriteFileFn() writeFileType { return writeFileFn }
+
+// SetReadFileFn overrides the ReadFile function.
+func SetReadFileFn(fn readFileType) { readFileFn = fn }
+
+// SetWriteFileFn overrides the WriteFile function.
 func SetWriteFileFn(fn writeFileType) { writeFileFn = fn }
 
-const readByteMax = 32
-
-// ReadByte from the SPI interface.
-func ReadByte(filename string) (byte, error) {
-	data, err := readFileFn(filename)
-	if err != nil {
-		return 0, err
-	}
-	if len(data) != 2 || data[1] != '\n' {
-		return 0, fmt.Errorf("%q contains unexpected data; %v",
-			filename, data[0:math.MinInt(len(data), readByteMax)])
-	}
-	return data[0], nil
-}
-
-// ReadSPIFile reads data from the SPI interface, with newline stripped.
-func ReadSPIFile(filename string) (string, error) {
-	data, err := readFileFn(filename)
-	if err != nil {
-		return "", err
-	}
-	return strings.Split(fmt.Sprintf("%s", data), "\n")[0], nil
-}
-
-// WriteByte to the SPI interface.
-func WriteByte(filename string, v byte) error {
-	return writeFileFn(filename, []byte{v, '\n'}, fileMode)
-}
-
-// WriteSPIFile writes data to the SPI interface.
-func WriteSPIFile(filename string, data string) error {
-	buf := bytes.NewBuffer(nil)
-	_, err := buf.WriteString(data)
-	if err != nil {
-		return fmt.Errorf("error writing string to buffer; %s", err)
-	}
-	err = buf.WriteByte('\n')
-	if err != nil {
-		return fmt.Errorf("error writing newline to buffer; %s", err)
-	}
-	return writeFileFn(filename, buf.Bytes(), fileMode)
-}
-
-//-----------------------------------------------------------------------------
-// Helpers for testing.
-
 var (
-	rfData, wfData []byte
-	rfErr, wfErr   error
+	rfData       []byte
+	rfErr, wfErr error
 )
 
-func PrepareReadFile(data []byte, err error) {
+// PrepareMockReadFile to return error for ReadFileFn() call.
+func PrepareMockReadFile(data []byte, err error) {
 	if err != nil {
 		rfErr = err
 		return
@@ -111,11 +67,13 @@ func PrepareReadFile(data []byte, err error) {
 }
 
 // MockReadFile matches the signature of io.ReadFile.
-func MockReadFile(filename string) ([]byte, error) {
-	return rfData, rfErr
-}
+func MockReadFile(filename string) ([]byte, error) { return rfData, rfErr }
 
-func PrepareWriteFile(err error) {
+// MockData returns the mock ReadFileFn() data.
+func MockData() []byte { return rfData }
+
+// PrepareMockWriteFile to return error for WriteFileFn() call.
+func PrepareMockWriteFile(err error) {
 	if err != nil {
 		wfErr = err
 		return
@@ -126,11 +84,16 @@ func PrepareWriteFile(err error) {
 // MockWriteFile matches the signature of io.WriteFile.
 func MockWriteFile(filename string, data []byte, mode os.FileMode) error {
 	if wfErr != nil {
-		wfData = []byte{}
+		rfData = []byte{}
 		return wfErr
 	}
-	wfData = data
+	rfData = data
 	return nil
 }
 
-func MockWriteData() []byte { return wfData }
+// ResetMockReadWrite to clean state.
+func ResetMockReadWrite() {
+	rfData = []byte{}
+	rfErr = nil
+	wfErr = nil
+}

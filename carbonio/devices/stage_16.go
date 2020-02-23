@@ -26,7 +26,6 @@ var _ Device = new(Stage16)
 // NewStage16 returns a populated Stage16 struct.
 func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	o := &options{}
-	o.setSPIBaseDir(SPIDevicesDir)
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
 			return nil, err
@@ -39,6 +38,7 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	d := &Stage16{opts: o}
 
 	l, err := leds.New(
+		leds.SPIDelayRead(o.spiDelayRead),
 		leds.SPIBaseDir(o.spiBaseDir),
 		leds.Verbose(o.verbose),
 	)
@@ -47,7 +47,11 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 	}
 	d.leds = l
 
-	s, err := signals.MicInputs(o.spiBaseDir, o.verbose, stage16_numMicInputs)
+	s, err := signals.MicInputs(stage16_numMicInputs,
+		signals.SPIDelayRead(o.spiDelayRead),
+		signals.SPIBaseDir(o.spiBaseDir),
+		signals.Verbose(o.verbose),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -60,10 +64,10 @@ func NewStage16(opts ...func(*options) error) (*Stage16, error) {
 func (d *Stage16) LEDs() *leds.LEDs { return d.leds }
 
 // NumMicInputs implements Device.
-func (d *Stage16) NumMicInputs() uint { return stage16_numMicInputs }
+func (d *Stage16) NumMicInputs() int { return stage16_numMicInputs }
 
 // MicInput returns the signal for the specified input number.
-func (d *Stage16) MicInput(input uint) (*signals.Signal, error) {
+func (d *Stage16) MicInput(input int) (*signals.Signal, error) {
 	if input < 1 || input > stage16_numMicInputs {
 		return nil, fmt.Errorf("invalid input number %d", input)
 	}
