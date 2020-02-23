@@ -57,6 +57,19 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	// Validate spi_base_dir.
+	if cmd.Use != "create_spi" { // We're going to create the dir.
+		err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			helpers.Exit(fmt.Sprintf("invalid --spi_base_dir flag value %s", spiBaseDir))
+		}
+	}
+
 	// Setup carbonio device.
 	// NOTE: declaring with '=' to ensure global `device` is not overridden.
 	spiDelayRead := false
@@ -71,21 +84,6 @@ func persistentPreRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		helpers.Exit(fmt.Sprintf("error configuring the Stage 16 device; %s", err))
 	}
-
-	// Validate spi_base_dir.
-	if cmd.Use == "create_spi" { // We're going to create the dir.
-		return
-	}
-	err = filepath.Walk(spiBaseDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		helpers.Exit(fmt.Sprintf("invalid --spi_base_dir flag value %s", spiBaseDir))
-	}
-
 }
 
 func root(cmd *cobra.Command, args []string) {

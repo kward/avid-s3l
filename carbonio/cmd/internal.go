@@ -48,7 +48,7 @@ func internal_create_spi(cmd *cobra.Command, args []string) {
 		{"LED " + device.LEDs().Mute().Name(),
 			device.LEDs().Mute().Path, device.LEDs().Mute().Initialize},
 	}
-	for i := 1; i < device.NumMicInputs(); i++ {
+	for i := 1; i <= device.NumMicInputs(); i++ {
 		s, err := device.MicInput(i)
 		if err != nil {
 			fmt.Printf("mic input error; %s", err)
