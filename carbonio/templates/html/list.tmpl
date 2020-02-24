@@ -1,6 +1,6 @@
 <html>
 <head>
-	<script type="text/javascript"src="http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script type="text/javascript" src="/static/jquery-3.4.1.min.js"></script>
 	<title>{{.Title}}</title>
 </head>
 
@@ -9,11 +9,11 @@
 	<pre><div id="output"></div></pre>
 	<script type="text/javascript">
     $(document).ready(function () {
-      setInterval("delayedPost()", 3 * 1000);
-      delayedPost();
+      setInterval("query()", 3 * 1000);
+      query();
     });
-    function delayedPost() {
-      $.post("http://{{.Host}}:{{.Port}}/list_query", "", function(data, status) {
+    function query() {
+      $.post("/list_query", "", function(data, status) {
       $("#output").empty();
       $("#output").append(data);
       });

@@ -12,6 +12,7 @@ import (
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/handlers"
 	"github.com/kward/avid-s3l/carbonio/helpers"
+	"github.com/kward/avid-s3l/carbonio/static"
 )
 
 var (
@@ -44,6 +45,9 @@ func HttpServer(port int, device devices.Device) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", rootHandler)
+	// TODO(2020-02-24) Add logging for /static requests.
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(static.AssetFile())))
+
 	r.HandleFunc("/list", h.ListHandler)
 	r.HandleFunc("/list_query", h.ListQueryHandler)
 	r.HandleFunc("/status", h.StatusHandler)

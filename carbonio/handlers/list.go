@@ -36,35 +36,24 @@ func (h *Handlers) ListHandler(w http.ResponseWriter, r *http.Request) {
 	buf := &bytes.Buffer{}
 	stts := http.StatusOK
 
-	str, err := list(h.device, h.opts.raw)
-	if err != nil {
+	data := struct {
+		Title string
+		Host  net.IP
+		Port  int
+	}{
+		Title: "List",
+		Host:  h.device.IP(),
+		Port:  h.opts.port,
+	}
+	if err := tmpls[listTmpl].Execute(io.Writer(buf), data); err != nil {
 		stts = http.StatusInternalServerError
 		w.WriteHeader(stts)
-		log.Printf("%s", err)
-	}
-
-	if stts == http.StatusOK {
-		data := struct {
-			Title    string
-			Host     net.IP
-			Port     int
-			Contents string
-		}{
-			Title:    "List",
-			Host:     h.device.IP(),
-			Port:     h.opts.port,
-			Contents: str,
-		}
-		err = tmpls[listTmpl].Execute(io.Writer(buf), data)
-		if err != nil {
-			stts = http.StatusInternalServerError
-			w.WriteHeader(stts)
-			log.Printf("error executing template; %s", err)
-		}
+		log.Printf("error executing template; %s", err)
 	}
 
 	l := 0
 	if stts == http.StatusOK {
+		var err error
 		l, err = w.Write(buf.Bytes())
 		if err != nil {
 			stts = http.StatusInternalServerError
