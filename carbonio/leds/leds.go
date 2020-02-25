@@ -36,9 +36,9 @@ func New(opts ...func(*options) error) (*LEDs, error) {
 		enum   spi.Enum
 		states byState
 	}{
-		{&leds.power, spi.Power, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
-		{&leds.status, spi.Status, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
-		{&leds.mute, spi.Mute, byState{Off: 0, On: 1, testState: 255}},
+		{&leds.power, spi.PowerLED, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
+		{&leds.status, spi.StatusLED, byState{Off: 0, Alert: 1, On: 2, testState: 255}},
+		{&leds.mute, spi.MuteLED, byState{Off: 0, On: 1, testState: 255}},
 	} {
 		l, err := NewLED(led.enum, led.states, opts...)
 		if err != nil {

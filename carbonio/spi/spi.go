@@ -45,21 +45,30 @@ func New(enum Enum, num int, opts ...func(*options) error) (*SPI, error) {
 	}
 	var p string
 	switch enum {
-	// LEDs.
-	case Power:
+	// LEDs
+	case PowerLED:
 		p = "spi4.0/status_led_1_en"
-	case Status:
+	case StatusLED:
 		p = "spi4.0/status_led_0_en"
-	case Mute:
+	case MuteLED:
 		p = "spi4.0/mute_led_en"
-	// Inputs.
+	// ADC
 	case Gain:
-		p = path.Join(channelDir(num), fmt.Sprintf("ch%d_preamp_gain", channelNum(num)))
+		p = path.Join(adcDir(num), fmt.Sprintf("ch%d_preamp_gain", channelNum(num)))
 	case Pad:
-		p = path.Join(channelDir(num), fmt.Sprintf("ch%d_pad_en", channelNum(num)))
+		p = path.Join(adcDir(num), fmt.Sprintf("ch%d_pad_en", channelNum(num)))
 	case Phantom:
 		p = path.Join("spi4.0", phantomFile(num))
-		// Testing (for testing only).
+	// DAC
+	case Attenuation:
+		p = path.Join(dacDir(num), fmt.Sprintf("ch%d_attenuation", channelNum(num)))
+	case Mute:
+		p = path.Join(dacDir(num), fmt.Sprintf("ch%d_mute", channelNum(num)))
+	case OpAmp:
+		p = path.Join(dacDir(num), "opamp_en")
+	case Phase:
+		p = path.Join(dacDir(num), "phase_invert")
+	// Testing (for testing only).
 	case Blinky:
 		p = "spiX.Y/blinky_en"
 	}
@@ -144,14 +153,14 @@ func (s *SPI) Raw() []byte { return s.raw }
 // Value returns the most recent value read from the SPI interface.
 func (s *SPI) Value() int { return s.value }
 
-// channelDir maps the input number to the appropriate SPI device directory.
+// adcDir maps the input number to the appropriate ADC SPI device directory.
 //
 // Input signals are controlled with individual files using the SPI device
 // interface. The inputs are spread across devices (e.g., `spi1.1` for input
 // signal 1, or `spi1.2` for input signal 16).
 //
 // See also `channelNum()`.
-func channelDir(num int) string {
+func adcDir(num int) string {
 	switch num {
 	case 1, 2, 3, 4:
 		return "spi1.1"
@@ -161,6 +170,24 @@ func channelDir(num int) string {
 		return "spi1.3"
 	case 13, 14, 15, 16:
 		return "spi1.2"
+	default:
+		return "unknown"
+	}
+}
+
+// dacDir maps the input number to the appropriate DAC SPI device directory.
+//
+// Input signals are controlled with individual files using the SPI device
+// interface. The outputs are spread across devices (e.g., `spi1.5` for output
+// signal 1, or `spi1.4` for output signal 8).
+//
+// See also `channelNum()`.
+func dacDir(num int) string {
+	switch num {
+	case 1, 2, 3, 4:
+		return "spi1.5"
+	case 5, 6, 7, 8:
+		return "spi1.4"
 	default:
 		return "unknown"
 	}

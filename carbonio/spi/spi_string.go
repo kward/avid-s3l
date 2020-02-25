@@ -4,9 +4,27 @@ package spi
 
 import "strconv"
 
-const _Enum_name = "unknownSPIPowerStatusMuteGainPadPhantomBlinky"
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[unknownSPI-0]
+	_ = x[PowerLED-1]
+	_ = x[StatusLED-2]
+	_ = x[MuteLED-3]
+	_ = x[Gain-4]
+	_ = x[Pad-5]
+	_ = x[Phantom-6]
+	_ = x[Attenuation-7]
+	_ = x[Mute-8]
+	_ = x[OpAmp-9]
+	_ = x[Phase-10]
+	_ = x[Blinky-11]
+}
 
-var _Enum_index = [...]uint8{0, 10, 15, 21, 25, 29, 32, 39, 45}
+const _Enum_name = "unknownSPIPowerLEDStatusLEDMuteLEDGainPadPhantomAttenuationMuteOpAmpPhaseBlinky"
+
+var _Enum_index = [...]uint8{0, 10, 18, 27, 34, 38, 41, 48, 59, 63, 68, 73, 79}
 
 func (i Enum) String() string {
 	if i < 0 || i >= Enum(len(_Enum_index)-1) {

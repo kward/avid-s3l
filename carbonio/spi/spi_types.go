@@ -8,14 +8,20 @@ const (
 	unknownSPI Enum = iota
 
 	// LEDs.
-	Power
-	Status
-	Mute
+	PowerLED
+	StatusLED
+	MuteLED
 
 	// Inputs.
-	Gain
+	Gain // 0 if uninitialized.
 	Pad
 	Phantom
+
+	// Outputs.
+	Attenuation // 255 if uninitialized.
+	Mute
+	OpAmp
+	Phase
 
 	// TestLEDs (for testing only).
 	Blinky

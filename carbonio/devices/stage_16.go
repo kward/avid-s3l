@@ -11,7 +11,7 @@ import (
 const (
 	stage16_numMicInputs   = 16
 	stage16_numLineOutputs = 8
-	stage16_numAESOutputs  = 2
+	stage16_numAESOutputs  = 4 // Each physical connector supports two signals.
 )
 
 type Stage16 struct {
