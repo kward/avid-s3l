@@ -10,3 +10,9 @@
 [submodule "carbonio/vendor/github.com/gorilla/mux"]
 	path = carbonio/vendor/github.com/gorilla/mux
 	url = https://github.com/gorilla/mux.git
+[submodule "carbonio/vendor/google.golang.org/grpc"]
+	path = carbonio/vendor/google.golang.org/grpc
+	url = https://github.com/grpc/grpc-go.git
+[submodule "carbonio/vendor/github.com/kward/golib"]
+	path = carbonio/vendor/github.com/kward/golib
+	url = https://github.com/kward/golib.git
