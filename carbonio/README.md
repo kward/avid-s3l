@@ -9,6 +9,22 @@ Control (OSC).
 To set up your environment for development or testing, see the
 [Environment setup](#env_setup) section below.
 
+```shell
+$ mkdir ~/wa
+$ cd ~/wa
+$ ln -s . src
+$ mkdir -p github.com/kward
+$ git clone --recursive https://github.com/kward/avid-s3l.git github.com/kward
+$ cd github.com/kward/avid-s3l/carbonio
+$ go test ./...
+```
+
+Update existing submodules.
+
+```shell
+$ git submodule update --init
+```
+
 ### Local SPI devices directory
 
 Create a local SPI device structure.
