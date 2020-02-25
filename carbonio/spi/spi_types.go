@@ -12,16 +12,19 @@ const (
 	StatusLED
 	MuteLED
 
-	// Inputs.
+	// ADC / Inputs.
 	Gain // 0 if uninitialized.
 	Pad
 	Phantom
 
-	// Outputs.
+	// DAC / Outputs.
 	Attenuation // 255 if uninitialized.
 	Mute
 	OpAmp
 	Phase
+
+	// Other.
+	Switch
 
 	// TestLEDs (for testing only).
 	Blinky

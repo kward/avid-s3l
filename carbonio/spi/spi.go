@@ -3,6 +3,16 @@ Package spi reads-and-writes data directly to-and-from the SPI files. There is
 no processing of the data beyond converting it between []byte and int types. Any
 higher level understanding of the data (e.g., pad bitwise values) must be
 implemented downstream.
+
+SPI board ids:
+- Common
+  - 0x7 AES AES outputs
+  - 0x5 DAC line outputs
+  - 0x6 ADC mic inputs
+- E3 Engine
+  - 2   ADC mutes, phantoms; switch
+- Stage 16
+  - 1   ADC mutes, phantom; LEDs
 */
 package spi
 
@@ -45,21 +55,21 @@ func New(enum Enum, num int, opts ...func(*options) error) (*SPI, error) {
 	}
 	var p string
 	switch enum {
-	// LEDs
+	// LEDs.
 	case PowerLED:
 		p = "spi4.0/status_led_1_en"
 	case StatusLED:
 		p = "spi4.0/status_led_0_en"
 	case MuteLED:
 		p = "spi4.0/mute_led_en"
-	// ADC
+	// ADC / Inputs.
 	case Gain:
 		p = path.Join(adcDir(num), fmt.Sprintf("ch%d_preamp_gain", channelNum(num)))
 	case Pad:
 		p = path.Join(adcDir(num), fmt.Sprintf("ch%d_pad_en", channelNum(num)))
 	case Phantom:
 		p = path.Join("spi4.0", phantomFile(num))
-	// DAC
+	// DAC / Outputs.
 	case Attenuation:
 		p = path.Join(dacDir(num), fmt.Sprintf("ch%d_attenuation", channelNum(num)))
 	case Mute:
@@ -68,6 +78,9 @@ func New(enum Enum, num int, opts ...func(*options) error) (*SPI, error) {
 		p = path.Join(dacDir(num), "opamp_en")
 	case Phase:
 		p = path.Join(dacDir(num), "phase_invert")
+		// Other
+	case Switch: // Not present on Stage 16.
+		p = "spi4.0/switch_present"
 	// Testing (for testing only).
 	case Blinky:
 		p = "spiX.Y/blinky_en"
