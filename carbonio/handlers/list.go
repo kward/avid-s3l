@@ -129,7 +129,7 @@ func list(device devices.Device, asRaw bool) (string, error) {
 
 	tbl, err := tabulate.NewTable()
 	if err != nil {
-		return "", fmt.Errorf("unable to list settings; %s", err)
+		return "", fmt.Errorf("error instantiating a table; %s", err)
 	}
 	tbl.Split(lines, ifs, -1)
 	rndr := &tabulate.PlainRenderer{}

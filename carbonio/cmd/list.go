@@ -15,7 +15,6 @@ var (
 		Long:  `List prints the current settings of the carbonio device.`,
 		Run:   list,
 	}
-
 	listRaw bool
 )
 
