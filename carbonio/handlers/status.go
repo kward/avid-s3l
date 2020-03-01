@@ -10,7 +10,8 @@ import (
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
 	"github.com/kward/avid-s3l/carbonio/leds"
-	"github.com/kward/tabulate/tabulate"
+	"github.com/kward/tabulate/render"
+	"github.com/kward/tabulate/table"
 )
 
 const statusTmpl = "html/status.tmpl"
@@ -85,13 +86,11 @@ func status(device devices.Device, asRaw bool) (string, error) {
 		lines = append(lines, fmt.Sprintf("%s %s", led.Name(), state))
 	}
 
-	tbl, err := tabulate.NewTable()
+	tbl, err := table.Split(lines, ifs, -1)
 	if err != nil {
 		return "", fmt.Errorf("failure creating table; %s", err)
 	}
-	tbl.Split(lines, ifs, -1)
-	rndr := &tabulate.PlainRenderer{}
+	rndr := &render.PlainRenderer{}
 	rndr.SetOFS(ofs)
-
 	return rndr.Render(tbl), nil
 }

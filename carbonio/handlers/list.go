@@ -10,7 +10,8 @@ import (
 
 	"github.com/kward/avid-s3l/carbonio/devices"
 	"github.com/kward/avid-s3l/carbonio/helpers"
-	"github.com/kward/tabulate/tabulate"
+	"github.com/kward/tabulate/render"
+	"github.com/kward/tabulate/table"
 )
 
 const listTmpl = "html/list.tmpl"
@@ -127,13 +128,11 @@ func list(device devices.Device, asRaw bool) (string, error) {
 			gain, boolToStr[pad], boolToStr[phantom]))
 	}
 
-	tbl, err := tabulate.NewTable()
+	tbl, err := table.Split(lines, ifs, -1)
 	if err != nil {
 		return "", fmt.Errorf("error instantiating a table; %s", err)
 	}
-	tbl.Split(lines, ifs, -1)
-	rndr := &tabulate.PlainRenderer{}
+	rndr := &render.PlainRenderer{}
 	rndr.SetOFS(ofs)
-
 	return rndr.Render(tbl), nil
 }
