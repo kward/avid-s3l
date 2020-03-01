@@ -4,6 +4,11 @@ This package provides a UI to control the carbonio device of the Avid S3L. The
 UI is accessible via the command-line, a browser (HTTP), and via Open Sound
 Control (OSC).
 
+This code is under active development. For more background information about the
+CarbonIO device (based on what has been discovered), see
+[Avid S3L AVB Testing](https://docs.google.com/document/d/15VqiMrEWSea8XkfREXDXc20SR_aW4acPiuXZWqr5f08/edit?usp=sharing)
+(a Google Doc).
+
 ## Development and testing
 
 To set up your environment for development or testing, see the
