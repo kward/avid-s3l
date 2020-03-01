@@ -60,7 +60,6 @@ func HttpServer(port int, device devices.Device) {
 	}
 
 	fmt.Println("server started")
-
 	log.SetFlags(0)
 	log.Fatal(srv.ListenAndServe())
 }
