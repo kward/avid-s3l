@@ -2,15 +2,6 @@ package signals
 
 //go:generate stringer -output=signals_string.go -type=DirectionEnum,ConnectorEnum,FormatEnum,LevelEnum signals_types.go
 
-// DirectionEnum of the signal.
-type DirectionEnum int
-
-const (
-	unknownDirection DirectionEnum = iota
-	Input
-	Output
-)
-
 // ConnectorEnum physical type.
 type ConnectorEnum int
 
@@ -18,6 +9,15 @@ const (
 	unknownConnector ConnectorEnum = iota
 	XLR
 	Jack
+)
+
+// DirectionEnum of the signal.
+type DirectionEnum int
+
+const (
+	unknownDirection DirectionEnum = iota
+	Input
+	Output
 )
 
 // FormatEnum of the signal.
