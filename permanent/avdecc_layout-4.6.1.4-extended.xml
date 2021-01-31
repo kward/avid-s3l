@@ -309,7 +309,9 @@
 		</configuration>
 	</entity>
 	<entity>
-		<name>Avid E3 AVB 8x8</name>
+		<name>E3 Engine (4x16)</name>
+		<vendor>Avid</vendor>
+		<device>E3 Engine</device>
 		<guid>2</guid>
 		<allow_any_avdeccc>1</allow_any_avdeccc>
 		<!--The Entity for the Mac should ONLY support internal sync-->
@@ -317,7 +319,7 @@
 			<name>Internal</name>
 		</sync_internal>
 		<configuration>
-			<name>Configuration Fs48k</name>
+			<name>Configuration 4strm of 16ch at 48kHz</name>
 			<rate>
 				<!--enable_441k>1</enable_441k-->
 				<enable_48k>1</enable_48k>
@@ -327,156 +329,158 @@
 				<!--enable_192k>1</enable_192k-->
 			</rate>
 			<outstream>
-				<name>AVB Out 1-8</name>
+				<name>Out Stream 1 (1-16)</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>64</dmastart>
+			</outstream>
+			<outstream>
+				<name>Out Stream 2 (17-32)</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>80</dmastart>
+			</outstream>
+			<outstream>
+				<name>Out Stream 3 (33-48)</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>96</dmastart>
+			</outstream>
+			<outstream>
+				<name>Out Stream 4 (49-64)</name>
+				<pto>2000000</pto>
+				<channels>16</channels>
+				<dmastart>112</dmastart>
+			</outstream>
+			<instream>
+				<name>In Stream 1 (1-16)</name>
+				<channels>16</channels>
+				<dmastart>128</dmastart>
+			</instream>
+			<instream>
+				<name>In Stream 2 (17-32)</name>
+				<channels>16</channels>
+				<dmastart>144</dmastart>
+			</instream>
+			<instream>
+				<name>In Stream 3 (33-48)</name>
+				<channels>16</channels>
+				<dmastart>160</dmastart>
+			</instream>
+			<instream>
+				<name>In Stream 4 (49-64)</name>
+				<channels>16</channels>
+				<dmastart>176</dmastart>
+			</instream>
+		</configuration>
+	</entity>
+	<entity>
+		<name>E3 Engine (8x8)</name>
+		<vendor>Avid</vendor>
+		<device>E3 Engine</device>
+		<guid>3</guid>
+		<allow_any_avdeccc>1</allow_any_avdeccc>
+		<!--The Entity for the Mac should ONLY support internal sync-->
+		<sync_internal>
+			<name>Internal</name>
+		</sync_internal>
+		<configuration>
+			<name>Configuration 8strm of 8ch at 48kHz</name>
+			<rate>
+				<!--enable_441k>1</enable_441k-->
+				<enable_48k>1</enable_48k>
+				<!--enable_882k>1</enable_882k-->
+				<!--enable_96k>1</enable_96k-->
+				<!--enable_1764k>1</enable_1764k-->
+				<!--enable_192k>1</enable_192k-->
+			</rate>
+			<outstream>
+				<name>Out Stream 1 (1-8)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>64</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 9-16</name>
+				<name>Out Stream 2 (9-16)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>72</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 17-24</name>
+				<name>Out Stream 3 (17-24)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>80</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 25-32</name>
+				<name>Out Stream 4 (25-32)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>88</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 33-40</name>
+				<name>Out Stream 5 (33-40)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>96</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 41-48</name>
+				<name>Out Stream 6 (41-48)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>104</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 49-56</name>
+				<name>Out Stream 7 (49-56)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>112</dmastart>
 			</outstream>
 			<outstream>
-				<name>AVB Out 57-64</name>
+				<name>Out Stream 8 (57-64)</name>
 				<pto>2000000</pto>
 				<channels>8</channels>
 				<dmastart>120</dmastart>
 			</outstream>
 			<instream>
-				<name>AVB In 1-8</name>
+				<name>In Stream 1 (1-8)</name>
 				<channels>8</channels>
 				<dmastart>128</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 9-16</name>
+				<name>In Stream 2 (9-16)</name>
 				<channels>8</channels>
 				<dmastart>136</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 17-24</name>
+				<name>In Stream 3 (17-24)</name>
 				<channels>8</channels>
 				<dmastart>144</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 25-32</name>
+				<name>In Stream 4 (25-32)</name>
 				<channels>8</channels>
 				<dmastart>152</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 33-40</name>
+				<name>In Stream 5 (33-40)</name>
 				<channels>8</channels>
 				<dmastart>160</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 41-48</name>
+				<name>In Stream 6 (41-48)</name>
 				<channels>8</channels>
 				<dmastart>168</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 49-56</name>
+				<name>In Stream 7 (49-56)</name>
 				<channels>8</channels>
 				<dmastart>176</dmastart>
 			</instream>
 			<instream>
-				<name>AVB In 57-64</name>
+				<name>In Stream 8 (57-64)</name>
 				<channels>8</channels>
 				<dmastart>184</dmastart>
-			</instream>
-		</configuration>
-	</entity>
-	<entity>
-		<name>Avid E3 AVB 4x16</name>
-		<guid>2</guid>
-		<allow_any_avdeccc>1</allow_any_avdeccc>
-		<!--The Entity for the Mac should ONLY support internal sync-->
-		<sync_internal>
-			<name>Internal</name>
-		</sync_internal>
-		<configuration>
-			<name>Configuration Fs48k</name>
-			<rate>
-				<!--enable_441k>1</enable_441k-->
-				<enable_48k>1</enable_48k>
-				<!--enable_882k>1</enable_882k-->
-				<!--enable_96k>1</enable_96k-->
-				<!--enable_1764k>1</enable_1764k-->
-				<!--enable_192k>1</enable_192k-->
-			</rate>
-			<outstream>
-				<name>AVB Out 1-16</name>
-				<pto>2000000</pto>
-				<channels>16</channels>
-				<dmastart>64</dmastart>
-			</outstream>
-			<outstream>
-				<name>AVB Out 17-32</name>
-				<pto>2000000</pto>
-				<channels>16</channels>
-				<dmastart>80</dmastart>
-			</outstream>
-			<outstream>
-				<name>AVB Out 33-48</name>
-				<pto>2000000</pto>
-				<channels>16</channels>
-				<dmastart>96</dmastart>
-			</outstream>
-			<outstream>
-				<name>AVB Out 49-64</name>
-				<pto>2000000</pto>
-				<channels>16</channels>
-				<dmastart>112</dmastart>
-			</outstream>
-			<instream>
-				<name>AVB In 1-16</name>
-				<channels>16</channels>
-				<dmastart>128</dmastart>
-			</instream>
-			<instream>
-				<name>AVB In 17-32</name>
-				<channels>16</channels>
-				<dmastart>144</dmastart>
-			</instream>
-			<instream>
-				<name>AVB In 33-48</name>
-				<channels>16</channels>
-				<dmastart>160</dmastart>
-			</instream>
-			<instream>
-				<name>AVB In 49-64</name>
-				<channels>16</channels>
-				<dmastart>176</dmastart>
 			</instream>
 		</configuration>
 	</entity>

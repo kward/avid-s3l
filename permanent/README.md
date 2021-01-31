@@ -6,8 +6,10 @@ updated should these files be moved.
 
 ## Links
 
-**File**                | **Primary Link**
------------------------ | ----------------
-`avdecc_layout-4.5.txt` | [Avid S3L-X and 3P AVB][avdecc]
+**File**                           | **Primary Link**
+---------------------------------- | ----------------
+avdecc_layout-4.6.1.4-original.txt | [Avid S3L-X and 3P AVB][3p_avb]
+avdecc_layout-4.6.1.4-extended.txt | [Avid S3L-X and 3P AVB][3p_avb]
 
-[avdecc]: https://docs.google.com/document/d/1UNz9MU36TMIf2LM02OiCguJw3IcLuDvbClWeZnsys60/edit#
+[3p_avb]: https://docs.google.com/document/d/1UNz9MU36TMIf2LM02OiCguJw3IcLuDvbClWeZnsys60/edit#	"Avid S3L-X and 3P AVB"
+
