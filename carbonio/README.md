@@ -94,3 +94,52 @@ Install supporting software.
 ```shell
 $ go get -u github.com/go-bindata/go-bindata/...
 ```
+
+## Command-line
+
+direction/type/number
+input/mic/1
+
+avb/devs
+avb/<uid>/hostname
+avb/<uid>/mac
+avb/<uid>/serial_number
+avb/<uid>/vendor_name
+avb/<uid>/firmware_version
+ext/<ibank_or_obank>/<index>/ch/<index>/pad
+ext/<ibank>/<index>/ch/<index>/48V
+ext/<ibank_or_obank>/<index>/ch/<index>/trim
+
+List the current settings
+
+```
+$ carbonio [-h host] list [-o property] [-t inputs|outputs|leds]
+NAME GAIN PAD PHANTOM
+input/mic/1 1 on on
+input/mic/2 1 on on
+```
+
+-- Properties
+gain
+pad
+phantom
+
+```
+$ carbonio list -o status_led
+$ carbonio list -t led
+status_led on
+mute_led off
+power_led on
+$ carbonio get -o status_led
+STATUS_LED
+^Ton
+$ carbonio set -o status_led=on
+
+$ carbonio clone [-o property] [-t type] @host @host
+
+$ carbonio snap[shot] [-o property=value] ... <input|outputs>@<snap>
+$ carbonio rollback @snap
+$ carbonio destroy @snap
+
+$ carbonio identify
+```
